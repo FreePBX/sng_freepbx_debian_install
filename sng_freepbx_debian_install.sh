@@ -167,6 +167,7 @@ install_asterisk() {
 		pkg_install asterisk$astver-${ASTPKGS[$i]}
 	done
 
+	pkg_install asterisk$astver.0-freepbx-asterisk-modules
 	pkg_install asterisk-version-switch
 	pkg_install asterisk-sounds-*
 }
@@ -312,8 +313,11 @@ DEPPKGS=("redis-server"
 	"tcpdump" 
 	"sngrep" 
 	"libavdevice-dev"
-	"tftp-hpa"
+	"tftpd-hpa"
 	"xinetd"
+	"lame"
+	"haproxy"
+	"dnsmasq"
 )
 
 for i in "${!DEPPKGS[@]}"; do
@@ -502,6 +506,8 @@ fi
 fwconsole ma install sysadmin >> $log 2>&1
 message "Installing FreePBX 17 modules.."
 fwconsole ma installlocal >> $log 2>&1 
+message "Upgrading FreePBX 17 modules.."
+fwconsole ma upgradeall >> $log 2>&1 
 message "Executing fwconsole reload/restart .."
 fwconsole reload >> $log 2>&1 
 fwconsole restart >> $log 2>&1 
