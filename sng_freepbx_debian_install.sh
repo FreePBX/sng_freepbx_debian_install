@@ -238,10 +238,8 @@ DEPPKGS=("redis-server"
 	"net-tools" 
 	"rsyslog" 
 	"libavahi-client3" 
-	"php-curl" 
 	"nmap" 
 	"apache2" 
-	"php8.2-zip" 
 	"zip" 
 	"incron" 
 	"chrony" 
@@ -256,6 +254,8 @@ DEPPKGS=("redis-server"
 	"flex" 
 	"flite" 
 	"php8.2" 
+	"php8.2-curl" 
+	"php8.2-zip" 
 	"php8.2-redis" 
 	"php8.2-curl" 
 	"php8.2-cli" 
@@ -265,9 +265,10 @@ DEPPKGS=("redis-server"
 	"php8.2-mbstring" 
 	"php8.2-intl" 
 	"php8.2-xml" 
-	"php-pear" 
 	"php8.2-bz2" 
 	"php8.2-ldap" 
+	"php-soap" 
+	"php-pear" 
 	"curl" 
 	"sox" 
 	"libncurses5-dev" 
@@ -306,7 +307,6 @@ DEPPKGS=("redis-server"
 	"ipset" 
 	"iptables" 
 	"fail2ban" 
-	"php-soap" 
 	"htop" 
 	"liburiparser-dev" 
 	"postfix" 
@@ -318,6 +318,7 @@ DEPPKGS=("redis-server"
 	"lame"
 	"haproxy"
 	"dnsmasq"
+	"screen"
 )
 
 for i in "${!DEPPKGS[@]}"; do
@@ -401,6 +402,11 @@ EOF
 /usr/sbin/sysctl -p >> $log 2>&1
 
 
+# Setting screen configuration 
+cat <<EOF >> /root/.screenrc
+hardstatus alwayslastline
+hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{=kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B}%Y-%m-%d %{W}%c %{g}]'
+EOF
 
 
 # Setting VIM configuration for mouse copy paste
