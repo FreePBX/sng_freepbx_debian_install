@@ -319,6 +319,8 @@ DEPPKGS=("redis-server"
 	"haproxy"
 	"dnsmasq"
 	"screen"
+	"openvpn"
+	"sysstat"
 )
 
 for i in "${!DEPPKGS[@]}"; do
