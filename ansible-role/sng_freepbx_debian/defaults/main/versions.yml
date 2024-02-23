@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# sng_freepbx_debian/defaults/main/versions.yml
+# (originally roles/pngnx23299/defaults/main/versions.yml)
+
+# lots of things deprecated in PHP 8.2, yikes
+pngnx_php_major: 8
+pngnx_php_minor: 2
+pngnx_php_version: "{{ pngnx_php_major }}.{{ pngnx_php_minor }}"

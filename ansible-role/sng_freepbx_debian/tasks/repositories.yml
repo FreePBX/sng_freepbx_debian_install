@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# file: sng_freepbx_debian/tasks/repositories.yml
+
+# curl -fsSL https://pgp.mongodb.com/server-7.0.asc
+- name: Setup the MongoDB Repo from Ubuntu since Debian 12 lacks the binary.
+  become: true
+  ansible.builtin.copy:
+    src: 30-ubuntu-mongodb-repository.sources
+    dest: /etc/apt/sources.list.d/
+
+# wget -qO - https://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --armor --export
+- name: Setup the *{{ sfpd_install_testing }}* Sangoma Debian Repo the deb822 way for many, many packages.
+  become: true
+  ansible.builtin.copy:
+    src: 20-sangoma-fpbx-repository-{{ sfpd_install_testing | ternary('dev', 'prod') }}.sources
+    dest: /etc/apt/sources.list.d/
+
+# TODO: warn the user per https://wiki.debian.org/DebianRepository/UseThirdParty (Standard pinning section)
+- name: Prioritize the repo to (potentially) overwrite Debian distro packages.
+  become: true
+  ansible.builtin.template:
+    src: 99sangoma-fpbx-repository.j2
+    dest: /etc/apt/preferences.d/99sangoma-fpbx-repository

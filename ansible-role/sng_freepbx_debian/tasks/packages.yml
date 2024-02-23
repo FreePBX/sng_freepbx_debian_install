@@ -1,0 +1,252 @@
+# SPDX-FileCopyrightText: 2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# file: sng_freepbx_debian/tasks/packages.yml
+
+- name: Fix broken packages, if any, and update the repos.
+  become: true
+  ansible.builtin.apt:
+    state: fixed
+    update_cache: true
+
+- name: Set autosave for iptables-persistent package.
+  become: true
+  ansible.builtin.debconf:
+    name: iptables-persistent
+    question: iptables-persistent/{{ item }}
+    value: true
+    vtype: boolean
+  loop:
+    - autosave_v4
+    - autosave_v6
+
+- name: Set defaults for postfix package.
+  become: true
+  ansible.builtin.debconf:
+    name: postfix
+    question: postfix/{{ item.q }}
+    value: "{{ item.a }}"
+    vtype: string
+  loop:
+    - { q: "mailname",          a: "{{ sfpd_mailname }}" }
+    - { q: "main_mailer_type",  a: "{{ sfpd_main_mailer_type }}" }
+
+- name: Install deb packages from main Debian repos.
+  become: true
+  ansible.builtin.apt:
+    state: present
+    dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
+    name:
+      - apache2
+      - autoconf
+      - automake
+      - bc
+      - bison
+      - build-essential
+      - chrony
+      - curl
+      - dnsmasq
+      - dpkg-dev
+      - fail2ban
+      - flex
+      - flite
+      - ghostscript
+      - git
+      - gnupg
+      - haproxy
+      - htop
+      - incron
+      - ipset
+      - iptables
+      - iptables-persistent
+      - lame
+      - libasound2-dev
+      - libavahi-client3
+      - libavdevice-dev
+      - libbluetooth-dev
+      - libc-client2007e-dev
+      - libcurl4-openssl-dev
+      - libgmime-3.0-dev
+      - libical-dev
+      - libicu-dev
+      - libiksemel-dev
+      - libjansson-dev
+      - liblua5.2-dev
+      - libncurses5-dev
+      - libneon27-dev
+      - libnewt-dev
+      - libogg-dev
+      - libpq-dev
+      - libpri-dev
+      - libresample1-dev
+      - libsnmp-dev
+      - libspandsp-dev
+      - libspeexdsp-dev
+      - libsqlite3-dev
+      - libsrtp2-dev
+      - libssl-dev
+      - libsybdb5
+      - libtiff-tools
+      - libtonezone-dev
+      - libtool
+      - libtool-bin
+      - libunbound-dev
+      - liburiparser-dev
+      - libvorbis-dev
+      - libxml2-dev
+      - mariadb-client
+      - mariadb-server
+      - mpg123
+      - net-tools
+      - nmap
+      - nodejs
+      - npm
+      - odbc-mariadb
+      - openssh-server
+      - openvpn
+      - php{{ pngnx_php_version }}
+      - php{{ pngnx_php_version }}-bz2
+      - php{{ pngnx_php_version }}-cli
+      - php{{ pngnx_php_version }}-common
+      - php{{ pngnx_php_version }}-curl
+      - php{{ pngnx_php_version }}-curl
+      - php{{ pngnx_php_version }}-gd
+      - php{{ pngnx_php_version }}-intl
+      - php{{ pngnx_php_version }}-ldap
+      - php{{ pngnx_php_version }}-mbstring
+      - php{{ pngnx_php_version }}-mysql
+      - php{{ pngnx_php_version }}-redis
+      - php{{ pngnx_php_version }}-xml
+      - php{{ pngnx_php_version }}-zip
+      - php-pear
+      - php-soap
+      - pkg-config
+      - postfix
+      - python-dev-is-python3
+      - redis-server
+      - rsyslog
+      - screen
+      - sngrep
+      - software-properties-common
+      - sox
+      - sqlite3
+      - subversion
+      - sudo
+      - sysstat
+      - tcpdump
+      - tftpd-hpa
+      - unixodbc
+      - unixodbc-dev
+      - uuid
+      - uuid-dev
+      - vim
+      - wget
+      - xinetd
+      - zip
+
+- name: Install deb packages for MongoDB (from MongoDB Ubuntu repo.)
+  become: true
+  ansible.builtin.apt:
+    state: present
+    name:
+      - mongodb-org 
+
+- name: Prepare temp directory for downloading libfdk-aac2.
+  ansible.builtin.tempfile:
+    suffix: ".libfdk-aac2"
+    state: directory
+  register: tmpfdk
+
+- name: Download non-free libfdk-aac2 (from Debian non-free repo.)
+  ansible.builtin.get_url:
+    url: "{{ sfpd_libfdk_baseurl }}/{{ item }}"
+    dest: "{{ tmpfdk.path }}"
+    mode: "0500"
+  loop:
+    - "{{ sfpd_libfdk_aac }}"
+    - "{{ sfpd_libfdk_aac_dev }}"
+
+- name: Install non-free libfdk-aac2.
+  become: true
+  ansible.builtin.apt:
+    state: present
+    deb: "{{ tmpfdk.path }}/{{ item }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
+  loop:
+    - "{{ sfpd_libfdk_aac }}"
+    - "{{ sfpd_libfdk_aac_dev }}"
+
+- name: Run autoremove (might not be necessary.)
+  become: true
+  ansible.builtin.apt:
+    state: present
+    autoremove: true
+
+- name: Install deb packages for Asterisk (mostly from Sangoma repo.)
+  become: true
+  when: sfpd_install_asterisk
+  ansible.builtin.apt:
+    state: present
+    dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
+    name:
+      - asterisk{{ sfpd_asterisk_version }}
+      - asterisk{{ sfpd_asterisk_version }}-addons
+      - asterisk{{ sfpd_asterisk_version }}-addons-bluetooth
+      - asterisk{{ sfpd_asterisk_version }}-addons-core
+      - asterisk{{ sfpd_asterisk_version }}-addons-mysql
+      - asterisk{{ sfpd_asterisk_version }}-addons-ooh323
+      - asterisk{{ sfpd_asterisk_version }}-core
+      - asterisk{{ sfpd_asterisk_version }}-curl
+      - asterisk{{ sfpd_asterisk_version }}-dahdi
+      - asterisk{{ sfpd_asterisk_version }}-doc
+      - asterisk{{ sfpd_asterisk_version }}-odbc
+      - asterisk{{ sfpd_asterisk_version }}-ogg
+      - asterisk{{ sfpd_asterisk_version }}-flite
+      - asterisk{{ sfpd_asterisk_version }}-g729
+      - asterisk{{ sfpd_asterisk_version }}-resample
+      - asterisk{{ sfpd_asterisk_version }}-snmp
+      - asterisk{{ sfpd_asterisk_version }}-speex
+      - asterisk{{ sfpd_asterisk_version }}-sqlite3
+      - asterisk{{ sfpd_asterisk_version }}-res-digium-phone
+      - asterisk{{ sfpd_asterisk_version }}-voicemail
+      - asterisk{{ sfpd_asterisk_version }}.0-freepbx-asterisk-modules
+      - asterisk-version-switch
+
+- name: Install deb packages for Asterisk sounds (mostly from Sangoma repo.)
+  become: true
+  when: sfpd_install_asterisk
+  ansible.builtin.apt:
+    state: present
+    dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
+    name:
+      - asterisk-sounds-*
+
+- name: Install deb packages for helping FreePBX (mostly from Sangoma repo.)
+  become: true
+  ansible.builtin.apt:
+    state: present
+    dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
+    name:
+      - ioncube-loader-82
+      - sysadmin17
+      - sangoma-pbx17
+      - ffmpeg
+
+- name: Install deb packages for FreePBX (mostly from Sangoma repo.)
+  become: true
+  when: sfpd_install_freepbx
+  ansible.builtin.apt:
+    state: present
+    dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
+    name:
+      - freepbx17
+
+- name: Install deb packages from main Debian repos (extras beyond the bash script.)
+  become: true
+  ansible.builtin.apt:
+    state: present
+    dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
+    name:
+      - colorized-logs

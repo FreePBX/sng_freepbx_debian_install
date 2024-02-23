@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2023-2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# file: sng_freepbx_debian/tasks/resources-freepbx.yml
+
+# Makes several directories and files.
+# This is every mkdir command in the bash installer in one place.
+
+- name: Making some directories needed by FreePBX.
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "/tftpboot"
+    - "/var/lib/asterisk/moh"
+    - "/var/lib/asterisk/sounds"
+    - "/var/lib/php/session"
+    - "/var/log/pbx"
+
+- name: Setting up some glue files needed by FreePBX in Asterisk.
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: asterisk
+    group: asterisk
+    mode: "0750"
+    state: touch
+    access_time: now
+  loop:
+    - /etc/asterisk/extconfig_custom.conf
+    - /etc/asterisk/extensions_additional.conf
+    - /etc/asterisk/extensions_custom.conf
+    - /etc/asterisk/extensions_override_freepbx.conf

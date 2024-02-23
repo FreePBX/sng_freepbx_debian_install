@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# sng_freepbx_debian/defaults/main/controls.yml
+
+# This control file makes for easy copy-pasta into your hosts/ definitions.
+# It is probably the one you will modify most often when customizing things.
+
+sfpd_install_asterisk: true
+sfpd_install_freepbx: true
+sfpd_install_testing: false
+
+# Another good choice might be the LTS version 20.
+sfpd_asterisk_version: 21
+
+# The postfix mail config is janky.
+sfpd_mailname: "my.hostname.example"
+sfpd_main_mailer_type: "Internet Site"
+
+# Speeds up a few places during install, such as skipping packages that
+# are already installed instead of forcing re-installation.
+sfpd_fast: false
+
+# You can limit which FreePBX modules are installed.
+sfpd_freepbx_size: default
+#sfpd_freepbx_size: basic
+#sfpd_freepbx_size: extra
+
+# Debian specs say values over 100 should never be used.
+# Setting this to 600 (per the bash installer) will cause
+# Sangoma repo to override Debian repo for any overlapping packages.
+sfpd_sng_deb_mirror_priority: 600

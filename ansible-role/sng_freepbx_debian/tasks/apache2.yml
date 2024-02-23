@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2023-2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# file: sng_freepbx_debian/tasks/apache2.yml
+# (originally file: roles/pngnx23299/tasks/apache2.yml)
+
+# Tweaks to default Apache install for use with FreePBX GUI.
+
+- name: Increase Apache PHP max upload size.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/php/{{ pngnx_php_version }}/apache2/php.ini
+    regexp: '^upload_max_filesize'
+    line: 'upload_max_filesize = 120M'
+
+- name: Increase Apache PHP memory limit.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/php/{{ pngnx_php_version }}/apache2/php.ini
+    regexp: '^memory_limit'
+    line: 'memory_limit = 1256M'
+
+- name: Change Apache to run as Asterisk user.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/apache2/envvars
+    regexp: '^export APACHE_RUN_USER'
+    line: 'export APACHE_RUN_USER=asterisk'
+
+- name: Change Apache to run as Asterisk group.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/apache2/envvars
+    regexp: '^export APACHE_RUN_GROUP'
+    line: 'export APACHE_RUN_GROUP=asterisk'
+
+- name: Let FreePBX override permissions.
+  become: true
+  ansible.builtin.replace:
+    path: /etc/apache2/apache2.conf
+    regexp: 'AllowOverride None'
+    replace: 'AllowOverride All'
+
+- name: Enable Apache rewrite module.
+  become: true
+  community.general.apache2_module:
+    state: present
+    name: rewrite
+
+- name: Restart Apache.
+  become: true
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+    enabled: true
+
+- name: Remove the default index.html because FreePBX will replace it with index.php.
+  become: true
+  ansible.builtin.file:
+    path: /var/www/html/index.html
+    state: absent

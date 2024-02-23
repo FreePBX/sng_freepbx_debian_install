@@ -1,0 +1,144 @@
+# SPDX-FileCopyrightText: 2023-2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# file: sng_freepbx_debian/tasks/freepbx.yml
+
+# Paves the way for FreePBX. Follows the bash installer (too) closely.
+# The current bash installer puts most of this in step 3 and step 4.
+
+- name: Enabling freepbx.ini file.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/phpenmod
+      - freepbx
+
+- name: Restart fail2ban.
+  become: true
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted
+
+- name: Install FreePBX sysadmin module.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /sbin/fwconsole
+      - ma
+      - install
+      - sysadmin
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
+  ignore_errors: true
+
+- name: Install FreePBX locally downloaded modules (from the deb package.)
+  become: true
+  when: sfpd_freepbx_size is not defined or sfpd_freepbx_size == "default"
+  ansible.builtin.command:
+    argv:
+      - /sbin/fwconsole
+      - ma
+      - installlocal
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
+  ignore_errors: true
+
+- name: Install FreePBX modules - basic and extra versions.
+  become: true
+  when: sfpd_freepbx_size == "basic" or sfpd_freepbx_size == "extra"
+  ansible.builtin.command:
+    argv:
+      - /sbin/fwconsole
+      - ma
+      - install
+      - "{{ pngnx_freepbx_basic_modules | flatten }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
+  ignore_errors: true
+
+- name: Install FreePBX modules - extra version.
+  become: true
+  when: sfpd_freepbx_size == "extra"
+  ansible.builtin.command:
+    argv:
+      - /sbin/fwconsole
+      - ma
+      - install
+      - "{{ pngnx_freepbx_extra_modules | flatten }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
+
+- name: Immediately upgrade FreePBX modules.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /sbin/fwconsole
+      - ma
+      - upgradeall
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
+
+- name: Refresh FreePBX module signatures.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /sbin/fwconsole
+      - ma
+      - refreshsignatures
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
+
+- name: Reload FreePBX.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /sbin/fwconsole
+      - reload
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
+  ignore_errors: true
+
+- name: Restart FreePBX.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /sbin/fwconsole
+      - restart
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
+  ignore_errors: true
+
+- name: Reload SystemD to catch new FreePBX service changes.
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Give SystemD a moment to catch-up.
+  delegate_to: localhost
+  ansible.builtin.wait_for:
+    timeout: 2
+
+- name: Enable FreePBX service via SystemD.
+  become: true
+  ansible.builtin.systemd:
+    name: freepbx
+    enabled: true
+
+- name: "Join us on the FreePBX Community Forum: https://community.freepbx.org/"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/fwconsole
+      - motd
+  register: rmotd
+
+# Removes color escapes but uses shell hrmph.
+# - name: "Join us on the FreePBX Community Forum: https://community.freepbx.org/"
+#  become: true
+#  ansible.builtin.shell: /usr/sbin/fwconsole motd | ansi2txt
+#  register: rmotd
+
+- name: "Special thank you to Penguin PBX Solutions https://PenguinPBX.com/ for ansible-izing the installer!"
+  ansible.builtin.debug:
+    var: rmotd.stdout_lines

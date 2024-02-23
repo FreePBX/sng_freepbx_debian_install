@@ -1,0 +1,212 @@
+# SPDX-FileCopyrightText: 2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# sng_freepbx_debian/defaults/main/freepbx_modules.yml
+# (originally roles/pngnx23299/defaults/main/freepbx_modules.yml)
+
+# minimal install mostly for testing module development
+pngnx_freepbx_basic_modules:
+  - framework
+  - backup
+  - core
+  - dashboard
+  - filestore
+  - pm2
+  - sipsettings
+  - voicemail
+
+# more nice things to have
+pngnx_freepbx_extra_modules:
+  - announcement
+  - arimanager
+  - asteriskinfo
+  - calendar
+  - callrecording
+  - cdr
+  - cel
+  - conferences
+  - customappsreg
+  - featurecodeadmin
+  - ivr
+  - logfiles
+  - manager
+  - miscapps
+  - music
+  - paging
+  - queues
+  - recordings
+  - ringgroups
+  - soundlang
+  - timeconditions
+
+# many more things
+pngnx_freepbx_plus_modules:
+  - amd
+  - api
+  - asterisk-cli
+  - blacklist
+  - bulkhandler
+  - callback
+  - callforward
+  - callwaiting
+  - certman
+  - cidlookup
+  - configedit
+  - contactmanager
+  - cxpanel
+  - dahdiconfig
+  - daynight
+  - dictate
+  - directory
+  - disa
+  - donotdisturb
+  - dundicheck
+  - fax
+  - findmefollow
+  - hotelwakeup
+  - iaxsettings
+  - infoservices
+  - languages
+  - outroutemsg
+  - parking
+  - pbdirectory
+  - phonebook
+  - pinsets
+  - presencestate
+  - printextensions
+  - restart
+  - setcid
+  - speeddial
+  - tts
+  - ucp
+  - userman
+  - vmblast
+  - weakpasswords
+  - webrtc
+  - xmpp
+
+# things that do not work currently
+pngnx_freepbx_broke_modules:
+  - dbmanager
+  - devtools
+  - extensionsettings
+  - miscdests
+  - moh_sounds
+  - pm2-node
+  - queueprio
+  - superfecta
+  - ttsengines
+
+# not version 17 yet
+pngnx_freepbx_outdated_modules:
+  - missedcall
+
+# these are in FreePBX GIT but not part of the main supported modules
+pngnx_freepbx_contributed_modules:
+  - a2billing
+  - accountcodepreserve
+  - agentadministration
+  - allowlist
+  - bosssecretary
+  - bulkdialpatterns
+  - bulkdids
+  - bulkextensions
+  - campon
+  - capturegroups
+  - cdrcost
+  - chan_sccp
+  - cidpopup
+  - cidroute
+  - contactdir
+  - customcontexts
+  - customerdb
+  - dbeditor
+  - directorypro
+  - dynroute
+  - endpointman
+  - extaudio
+  - extcfg
+  - fw_ari
+  - fw_langpacks
+  - googlevoice
+  - grammar
+  - h323
+  - importextensions
+  - inventorydb
+  - irc
+  - ivrpro
+  - javassh
+  - keylock
+  - languagestatus
+  - ldapcidlookup
+  - misdn
+  - missedcallnotify
+  - motif
+  - noojee
+  - odbcadmin
+  - outcnam
+  - panel
+  - phpagiconf
+  - phpinfo
+  - queuemetrics
+  - restapi
+  - routepermissions
+  - sccp_manager
+  - setcid
+  - silentmonitor
+  - sipcomment
+  - smartroutes
+  - synologyabb
+  - teletorture
+  - texttospeech
+  - tweet2call
+  - userpaneltab
+  - usersets
+  - vmailadmin
+  - voicemailari
+  - wakeup
+  - weather
+
+# need licenses
+pngnx_freepbx_nonfree_modules:
+  - adv_recovery
+  - broadcast
+  - callaccounting
+  - callerid
+  - calllimit
+  - conferencespro
+  - cos
+  - digiumaddoninstaller
+  - digium_phones
+  - endpoint
+  - extensionroutes
+  - faxpro
+  - firewall
+  - iotserver
+  - isymphony
+  - pagingpro
+  - parkpro
+  - pbxmfa
+  - pinsetspro
+  - pms
+  - queuestats
+  - qxact_reports
+  - recording_report
+  - restapps
+  - sangomaconnect
+  - sangomacrm
+  - sangomartapi
+  - sipstation
+  - sms
+  - smsplus
+  - sysadmin
+  - vmnotify
+  - voicemail_report
+  - voipinnovations
+  - zulu
+
+# Modules elsewhere
+# smsconnector is FLOSS but requires sms which is non-free
+pngnx_freepbx_rogue_modules:
+  - smsconnector

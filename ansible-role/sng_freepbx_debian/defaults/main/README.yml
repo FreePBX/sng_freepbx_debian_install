@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# file: sng_freepbx_debian/defaults/main/README.yml
+
+# There are two recommend ways to override these default values:
+#
+# You can override the default values in these files on the command line,
+#
+# or,
+#
+# Define them in separate files in group_vars/ or host_vars/ directories
+# at the same top-level as your playbook. For example, you might copy the
+# controls.yml or network.yml file into host_vars/TARGET to start, then
+# adjust according to your needs.

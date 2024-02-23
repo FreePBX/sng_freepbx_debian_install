@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2023-2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# file: sng_freepbx_debian/tasks/tweaks.yml
+
+# Adjusts a few things. Follows the bash installer (too) closely.
+# The current bash installer puts most of this at the end of step 2.
+# (Except the postfix adjustment which is way at the end of step 4.)
+
+# TODO: confirm this is needed
+# TODO: put the guts in a separate file, then .include from the main file
+- name: Adding new default openssl configuration.
+  become: true
+  community.general.ini_file:
+    path: /etc/ssl/openssl.cnf
+    section: "{{ item.s }}"
+    option: "{{ item.o }}"
+    value: "{{ item.v }}"
+  loop:
+    - { s: " default_conf ",      o: "ssl_conf",        v: "ssl_sect" }
+    - { s: "ssl_sect",            o: "system_default",  v: "system_default_sect" }
+    - { s: "system_default_sect", o: "MinProtocol",     v: "TLSv1.2" }
+    - { s: "system_default_sect", o: "CipherString",    v: "DEFAULT:@SECLEVEL=1" }
+
+- name: Switching to new default openssl configuration.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/ssl/openssl.cnf
+    regexp: "^openssl_conf = openssl_init$"
+    line: "openssl_conf = default_conf"
+
+# TODO: what year is this that ipv6 is disabled ?
+- name: Disabling ipv6 to make life easier (especially for nodeJS localhost resolution.)
+  become: true
+  ansible.posix.sysctl:
+    sysctl_file: /etc/sysctl.d/50-sng_fpbx_sysctl.conf
+    name: "{{ item.n }}"
+    value: "{{ item.v }}"
+  loop:
+    - { n: "net.ipv6.conf.all.disable_ipv6",      v: "1" }
+    - { n: "net.ipv6.conf.default.disable_ipv6",  v: "1" }
+    - { n: "net.ipv6.conf.lo.disable_ipv6",       v: "1" }
+
+# TODO: screen rc
+# TODO: vim rc
+
+- name: Allow for *huge* email attachments (up to 100MB sheesh!)
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/postconf
+      - -e
+      - message_size_limit=102400000

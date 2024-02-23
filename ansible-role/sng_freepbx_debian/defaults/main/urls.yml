@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# sng_freepbx_debian/defaults/main/urls.yml
+
+sfpd_libfdk_baseurl: "http://ftp.us.debian.org/debian/pool/non-free/f/fdk-aac/"
+sfpd_libfdk_aac: "libfdk-aac2_2.0.1-1_amd64.deb"
+sfpd_libfdk_aac_dev: "libfdk-aac-dev_2.0.1-1_amd64.deb"
