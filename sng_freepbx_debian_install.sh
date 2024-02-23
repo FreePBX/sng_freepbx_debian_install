@@ -373,7 +373,7 @@ groupadd -r asterisk
 useradd -r -g asterisk -d /var/lib/asterisk -M -s /usr/sbin/nologin asterisk
 
 # Adding asterisk to the sudoers list
-echo "%asterisk ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
+#echo "%asterisk ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Creating /tftpboot directory
 mkdir -p /tftpboot
@@ -463,7 +463,7 @@ apt update >> $log 2>&1
 # log the apt-cache policy 
 apt-cache policy  >> $log 2>&1
 
-chown -R asterisk:asterisk /etc/ssl
+#chown -R asterisk:asterisk /etc/ssl
 
 # Install Asterisk
 if [ $noast ] ; then
