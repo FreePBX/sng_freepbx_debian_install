@@ -319,6 +319,7 @@ DEPPKGS=("redis-server"
 	"haproxy"
 	"dnsmasq"
 	"screen"
+	"easy-rsa"
 	"openvpn"
 	"sysstat"
 )
