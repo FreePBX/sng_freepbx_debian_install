@@ -46,8 +46,8 @@
       - build-essential
       - chrony
       - curl
-      - dnsmasq
       - dpkg-dev
+      - easy-rsa
       - fail2ban
       - flex
       - flite
@@ -250,3 +250,12 @@
     dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
     name:
       - colorized-logs
+
+- name: Hold a couple packages that will use non-apt upgrade methods.
+  become: true
+  ansible.builtin.dpkg_selections:
+    selection: hold
+    name: "{{ item }}"
+  loop:
+    - freepbx17
+    - sangoma-pbx17

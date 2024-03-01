@@ -24,6 +24,8 @@ Ansible Role from [Penguin PBX Solutions](https://PenguinPBX.com).*
 
         ssh TARGET
 
+   Got shell? Good! Stay connected. Continue with step 2 in another terminal on CONTROL.
+
 2. Install ansible, sshpass, and git:
 
         sudo apt-get install ansible sshpass git
