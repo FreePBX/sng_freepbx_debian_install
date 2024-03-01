@@ -317,8 +317,8 @@ DEPPKGS=("redis-server"
 	"xinetd"
 	"lame"
 	"haproxy"
-	"dnsmasq"
 	"screen"
+	"easy-rsa"
 	"openvpn"
 	"sysstat"
 )
@@ -364,6 +364,9 @@ EOF
 
 pkg_install software-properties-common
 pkg_install gnupg
+
+# Delete old key 
+apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52"
 
 wget -qO - http://deb.freepbx.org/gpg/aptly-pubkey.asc | apt-key add - >> "$log" 2>&1
 
@@ -552,6 +555,10 @@ systemctl restart apache2 >> "$log" 2>&1
 
 # Refresh signatures 
 /usr/sbin/fwconsole ma refreshsignatures >> "$log" 2>&1
+
+#Do not want to upgrade initial(first time setup) packages
+apt-mark hold freepbx17
+apt-mark hold sangoma-pbx17
 
 ############ TODO - POST INSTALL VALIDATION ############################################
 ########################################################################################
