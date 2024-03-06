@@ -373,7 +373,7 @@ wget -qO - http://deb.freepbx.org/gpg/aptly-pubkey.asc | apt-key add - >> "$log"
 message " ###### STEP-2 END #########################  "
 
 groupadd -r asterisk
-useradd -r -g asterisk -d /var/lib/asterisk -M -s /usr/sbin/nologin asterisk
+useradd -r -g asterisk -d /home/asterisk -M -s /bin/bash asterisk
 
 # Adding asterisk to the sudoers list
 #echo "%asterisk ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
