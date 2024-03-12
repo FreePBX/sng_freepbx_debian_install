@@ -470,7 +470,7 @@ apt-cache policy  >> $log 2>&1
 
 # Install Asterisk
 if [ $noast ] ; then
-	message "Skipping Asterisk RPM installation due to noastrisk option"
+	message "Skipping Asterisk installation due to noastrisk option"
 else 
 	# TODO Need to check if asterisk installed already then remove that and install new ones.
 	# Install Asterisk 21
@@ -478,7 +478,7 @@ else
 fi
 
 message "Installing FreePBX dependent packages"
-# Install PBX dependent RPMs
+# Install PBX dependent packages
 pkg_install ioncube-loader-82
 pkg_install sysadmin17
 pkg_install sangoma-pbx17
@@ -549,6 +549,13 @@ cd /etc/apache2/sites-enabled/ && ln -s ../sites-available/freepbx.conf freepbx.
 
 #Setting postfix size to 100MB
 /usr/sbin/postconf -e message_size_limit=102400000
+
+# Disable expose_php for provide less information to attacker
+sed -i 's/\(^expose_php = \).*/\1Off/' /etc/php/8.2/apache2/php.ini
+
+# Disable ServerTokens and ServerSignature for provide less information to attacker
+sed -i 's/\(^ServerTokens \).*/\1Prod/' /etc/apache2/conf-available/security.conf
+sed -i 's/\(^ServerSignature \).*/\1Off/' /etc/apache2/conf-available/security.conf
 
 # Restart apache2
 systemctl restart apache2 >> "$log" 2>&1
