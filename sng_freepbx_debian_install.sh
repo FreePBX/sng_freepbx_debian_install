@@ -321,6 +321,7 @@ DEPPKGS=("redis-server"
 	"easy-rsa"
 	"openvpn"
 	"sysstat"
+ 	"cron"
 )
 
 for i in "${!DEPPKGS[@]}"; do
