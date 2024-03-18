@@ -21,6 +21,14 @@
     regexp: '^memory_limit'
     line: 'memory_limit = 1256M'
 
+# See https://github.com/FreePBX/sng_freepbx_debian_install/pull/2/commits/d60b47346597212798b7bb885956979a9db161d8
+- name: Disable Apache expose_php to provide less information to attackers.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/php/{{ pngnx_php_version }}/apache2/php.ini
+    regexp: '^expose_php'
+    line: 'expose_php = Off'
+
 - name: Change Apache to run as Asterisk user.
   become: true
   ansible.builtin.lineinfile:
@@ -35,6 +43,7 @@
     regexp: '^export APACHE_RUN_GROUP'
     line: 'export APACHE_RUN_GROUP=asterisk'
 
+# TODO: might be able to limit this to just the 000-default.conf site file
 - name: Let FreePBX override permissions.
   become: true
   ansible.builtin.replace:
@@ -47,6 +56,22 @@
   community.general.apache2_module:
     state: present
     name: rewrite
+
+# See https://github.com/FreePBX/sng_freepbx_debian_install/pull/2/commits/d60b47346597212798b7bb885956979a9db161d8
+- name: Disable ServerTokens to provide less information to attackers.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/apache2/conf-available/security.conf
+    regexp: '^ServerTokens'
+    line: 'ServerTokens Prod'
+
+# See https://github.com/FreePBX/sng_freepbx_debian_install/pull/2/commits/d60b47346597212798b7bb885956979a9db161d8
+- name: Disable ServerSignature to provide less information to attackers.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/apache2/conf-available/security.conf
+    regexp: '^ServerSignature'
+    line: 'ServerSignature Off'
 
 - name: Restart Apache.
   become: true
