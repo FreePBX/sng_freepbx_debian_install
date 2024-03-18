@@ -32,6 +32,15 @@
     - { q: "mailname",          a: "{{ sfpd_mailname }}" }
     - { q: "main_mailer_type",  a: "{{ sfpd_main_mailer_type }}" }
 
+- name: Install basic deb packages from main Debian repos that are lacking from some cloud providers.
+  become: true
+  ansible.builtin.apt:
+    state: present
+    dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
+    name:
+      - cron
+      - task-ssh-server
+
 - name: Install deb packages from main Debian repos.
   become: true
   ansible.builtin.apt:
