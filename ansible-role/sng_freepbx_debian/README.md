@@ -24,9 +24,14 @@ Ansible Role from [Penguin PBX Solutions](https://PenguinPBX.com).*
 
         ssh TARGET
 
-   Got shell? Good! Stay connected. Continue with step 2 in another terminal on CONTROL.
+   Got shell? Good! Stay connected. su to root on TARGET and install python3 and lsb-release:
 
-2. Install ansible, sshpass, and git:
+        su -
+        apt-get -y install python3 lsb-release
+
+   Keep this terminal open. Continue with step 2 in *another* terminal on CONTROL.
+
+2. Install ansible, sshpass, and git (assuming your CONTROL is Debian):
 
         sudo apt-get install ansible sshpass git
 

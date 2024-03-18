@@ -34,8 +34,8 @@ set -x
 
 cd /root
 
-# Bootstrap minimal Ansible install, and get git
-apt-get -qq install ansible git
+# Bootstrap minimal Ansible install, plus git, python3, and lsb-release
+apt-get -qq install ansible git python3 lsb-release
 
 # Assume we only downloaded this shell script, so get the repo
 git clone https://github.com/chrsmj/sng_freepbx_debian_install.git
