@@ -12,7 +12,7 @@
     dest: /etc/apt/sources.list.d/
 
 # wget -qO - https://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --armor --export
-- name: Setup the *{{ sfpd_install_testing }}* Sangoma Debian Repo the deb822 way for many, many packages.
+- name: Setup the Sangoma Debian Repo the deb822 way for many, many packages.
   become: true
   ansible.builtin.copy:
     src: 20-sangoma-fpbx-repository-{{ sfpd_install_testing | ternary('dev', 'prod') }}.sources

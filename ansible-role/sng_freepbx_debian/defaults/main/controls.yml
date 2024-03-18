@@ -24,8 +24,8 @@ sfpd_fast: false
 
 # You can limit which FreePBX modules are installed.
 sfpd_freepbx_size: default
-#sfpd_freepbx_size: basic
-#sfpd_freepbx_size: extra
+# sfpd_freepbx_size: basic
+# sfpd_freepbx_size: extra
 
 # Debian specs say values over 100 should never be used.
 # Setting this to 600 (per the bash installer) will cause
