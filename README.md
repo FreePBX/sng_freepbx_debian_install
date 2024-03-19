@@ -34,7 +34,11 @@ Please file bug reports at https://github.com/FreePBX/issue-tracker/issues
 
 
 ### How to execute the script
-Download the bash script and execute it on a freshly installed Debian 12.x OS using the command 'bash sng_freepbx_debian_install.sh' as the 'root' user. 
+
+Steps -
+1) ssh to the debian system as 'root' user
+2) wget https://github.com/FreePBX/sng_freepbx_debian_install/blob/master/sng_freepbx_debian_install.sh -O /tmp/sng_freepbx_debian_install.sh
+2) bash /tmp/sng_freepbx_debian_install.sh
 
 The script will install the necessary dependencies for FreePBX, followed by the FreePBX software itself. 
 
