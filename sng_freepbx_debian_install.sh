@@ -22,7 +22,7 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 set -e
-SCRIPTVER="1.0"
+SCRIPTVER="1.1"
 ASTVERSION=21
 AACVERSION="2.0.1-1"
 PHPVERSION="8.2"
@@ -115,9 +115,22 @@ isinstalled() {
 
 # Function to install the package
 pkg_install() {
+	log "############################### "
 	PKG=$@
-	log "Installing $PKG"
-	apt -y -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install $PKG >> $log 2>&1
+	if isinstalled $PKG; then
+		log "$PKG already present ...."
+	else
+		message "Installing $PKG ...."
+		apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install $PKG >> $log 2>&1
+		if isinstalled $PKG; then
+			message "$PKG installed successfully...."
+		else
+			message "$PKG failed to install ...."
+			message "Exiting the installation process as dependent $PKG failed to install ...."
+			terminate
+		fi
+	fi
+	log "############################### "
 }
 
 # Function to install the mongodb
@@ -164,15 +177,15 @@ install_asterisk() {
 
 	# creating directories
 	mkdir -p /var/lib/asterisk/moh
+	pkg_install asterisk$astver
 
-	asteriskPkgs=""
 	for i in "${!ASTPKGS[@]}"; do
-		asteriskPkgs="${asteriskPkgs} asterisk$astver-${ASTPKGS[$i]}"
+		pkg_install asterisk$astver-${ASTPKGS[$i]}
 	done
 
-    allAsteriskPkg=("asterisk$astver ${asteriskPkgs} asterisk$astver.0-freepbx-asterisk-modules asterisk-version-switch asterisk-sounds-*")
-
-	pkg_install ${allAsteriskPkg[*]}
+	pkg_install asterisk$astver.0-freepbx-asterisk-modules
+	pkg_install asterisk-version-switch
+	pkg_install asterisk-sounds-*
 }
 
 setup_repositories() {
@@ -192,7 +205,9 @@ setup_repositories() {
 	# Setting our default repo server
 	if [ $testrepo ] ; then
 		add-apt-repository -y -S "deb [ arch=${arch} ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
+		add-apt-repository -y -S "deb [ arch=${arch} ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
 	else
+		add-apt-repository -y -S "deb [ arch=${arch} ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
 		add-apt-repository -y -S "deb [ arch=${arch} ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
 	fi
 
@@ -247,6 +262,19 @@ setCurrentStep "Making sure installation is sane"
 apt -y --fix-broken install >> $log 2>&1
 apt autoremove -y >> "$log" 2>&1
 
+# Adding iptables and postfix  inputs so "iptables-persistent" and postfix will not ask for the input
+setCurrentStep "Setting up default configuration"
+debconf-set-selections <<EOF
+iptables-persistent iptables-persistent/autosave_v4 boolean true
+iptables-persistent iptables-persistent/autosave_v6 boolean true
+EOF
+echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
+echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
+
+# Install below packages which is required to add the repository
+pkg_install software-properties-common
+pkg_install gnupg
+
 setCurrentStep "Setting up repositories"
 setup_repositories
 
@@ -256,14 +284,7 @@ apt update >> $log 2>&1
 # log the apt-cache policy
 apt-cache policy  >> $log 2>&1
 
-# Adding iptables and postfix  inputs so "iptables-persistent" and postfix will not ask for the input
-setCurrentStep "Setting up default configuration"
-debconf-set-selections <<EOF
-iptables-persistent iptables-persistent/autosave_v4 boolean true
-iptables-persistent iptables-persistent/autosave_v6 boolean true
-EOF
-echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
-echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
+
 
 # Install dependent packages
 setCurrentStep "Installing required packages"
@@ -371,16 +392,15 @@ DEPPKGS=("redis-server"
 	"easy-rsa"
 	"openvpn"
 	"sysstat"
-	"software-properties-common"
-	"gnupg"
 	"apt-transport-https"
 	"lsb-release"
 	"ca-certificates"
  	"cron"
 )
+for i in "${!DEPPKGS[@]}"; do
+	pkg_install ${DEPPKGS[$i]}
+done
 
-allpkg="${DEPPKGS[*]}"
-pkg_install "${allpkg}"
 
 # Install mongod
 setCurrentStep "Setting up MongoDB"
@@ -404,6 +424,9 @@ apt autoremove -y >> "$log" 2>&1
 
 execution_time="$(($(date +%s) - $start))"
 message "Execution time to install all the dependent packages : $execution_time s"
+
+
+
 
 setCurrentStep "Setting up folders and asterisk config"
 groupExists="`getent group asterisk || echo ''`"
@@ -507,7 +530,7 @@ fi
 # Install Asterisk
 if [ $noast ] ; then
 	message "Skipping Asterisk installation due to noastrisk option"
-else 
+else
 	# TODO Need to check if asterisk installed already then remove that and install new ones.
 	# Install Asterisk 21
 	setCurrentStep "Installing Asterisk packages."
@@ -516,7 +539,15 @@ fi
 
 # Install PBX dependent RPMs
 setCurrentStep "Installing FreePBX packages"
-pkg_install "ioncube-loader-82" "sysadmin17" "sangoma-pbx17" "ffmpeg"
+FPBXPKGS=("ioncube-loader-82"
+	   "sysadmin17"
+	   "sangoma-pbx17"
+	   "ffmpeg"
+   )
+for i in "${!FPBXPKGS[@]}"; do
+	pkg_install ${FPBXPKGS[$i]}
+done
+
 
 #Enabling freepbx.ini file
 setCurrentStep "Enabling modules."
