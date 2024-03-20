@@ -376,6 +376,7 @@ DEPPKGS=("redis-server"
 	"apt-transport-https"
 	"lsb-release"
 	"ca-certificates"
+ 	"cron"
 )
 
 allpkg="${DEPPKGS[*]}"
