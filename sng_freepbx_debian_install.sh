@@ -57,6 +57,10 @@ while [[ $# -gt 0 ]]; do
 			noast=true
 			shift # past argument
 			;;
+		--noioncube)
+			noioncube=true
+			shift # past argument
+			;;
 		-*|--*)
 			echo "Unknown option $1"
 			exit 1
@@ -539,8 +543,18 @@ fi
 
 # Install PBX dependent RPMs
 setCurrentStep "Installing FreePBX packages"
-FPBXPKGS=("ioncube-loader-82"
-	   "sysadmin17"
+
+# Install ionCube
+if [ $noioncube ] ; then
+	message "Skipping ionCube installation due to noioncube option"
+else
+	# TODO Need to check if ioncube installed already then remove that and install new ones.
+	# Install ionCube
+	setCurrentStep "Installing ionCube packages."
+	pkg_install ioncube-loader-82
+fi
+
+FPBXPKGS=("sysadmin17"
 	   "sangoma-pbx17"
 	   "ffmpeg"
    )
