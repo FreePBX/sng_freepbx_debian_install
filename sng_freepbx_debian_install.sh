@@ -537,7 +537,7 @@ else
 	install_asterisk $ASTVERSION
 fi
 
-# Install PBX dependent RPMs
+# Install PBX dependent packages
 setCurrentStep "Installing FreePBX packages"
 FPBXPKGS=("ioncube-loader-82"
 	   "sysadmin17"
