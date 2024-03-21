@@ -189,7 +189,7 @@ install_asterisk() {
 }
 
 setup_repositories() {
-	#Add PHP 8.2
+	#Add PHP repository
 	wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
 	if [ "${DISTRIBUTION}" = "Ubuntu" ]; then
 	    add-apt-repository -y "ppa:ondrej/php" >> "$log" 2>&1
@@ -616,7 +616,7 @@ cd /etc/apache2/sites-enabled/ && ln -s ../sites-available/freepbx.conf freepbx.
 /usr/sbin/postconf -e message_size_limit=102400000
 
 # Disable expose_php for provide less information to attacker
-sed -i 's/\(^expose_php = \).*/\1Off/' /etc/php/8.2/apache2/php.ini
+sed -i 's/\(^expose_php = \).*/\1Off/' /etc/php/${PHPVERSION}/apache2/php.ini
 
 # Disable ServerTokens and ServerSignature for provide less information to attacker
 sed -i 's/\(^ServerTokens \).*/\1Prod/' /etc/apache2/conf-available/security.conf
