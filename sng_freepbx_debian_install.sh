@@ -411,8 +411,8 @@ setCurrentStep "Setting up libfdk"
 if isinstalled libfdk-aac-dev; then
 	log "libfdk-aac2 already present...."
 else
-	wget "http://ftp.us.debian.org/debian/pool/non-free/f/fdk-aac/libfdk-aac-dev_${AACVERSION}_${arch}.deb" -O "/tmp/libfdk-aac-dev_${AACVERSION}_${arch}.deb" >> "$log" 2>&1
-	wget "http://ftp.us.debian.org/debian/pool/non-free/f/fdk-aac/libfdk-aac2_${AACVERSION}_${arch}.deb" -O "/tmp/libfdk-aac2_${AACVERSION}_${arch}.deb" >> "$log" 2>&1
+	wget "http://deb.debian.org/debian/pool/non-free/f/fdk-aac/libfdk-aac-dev_${AACVERSION}_${arch}.deb" -O "/tmp/libfdk-aac-dev_${AACVERSION}_${arch}.deb" >> "$log" 2>&1
+	wget "http://deb.debian.org/debian/pool/non-free/f/fdk-aac/libfdk-aac2_${AACVERSION}_${arch}.deb" -O "/tmp/libfdk-aac2_${AACVERSION}_${arch}.deb" >> "$log" 2>&1
 	dpkg -i /tmp/libfdk-aac2_${AACVERSION}_${arch}.deb >> "$log" 2>&1
 	dpkg -i /tmp/libfdk-aac-dev_${AACVERSION}_${arch}.deb >> "$log" 2>&1
 	rm -f /tmp/libfdk-aac2_${AACVERSION}_${arch}.deb >> "$log" 2>&1
