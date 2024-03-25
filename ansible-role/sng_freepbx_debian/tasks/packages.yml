@@ -232,18 +232,26 @@
     name:
       - asterisk-sounds-*
 
+- name: Install ioncube deb packages for helping FreePBX (mostly from Sangoma repository.)
+  become: true
+  when: sfpd_install_ioncube
+  ansible.builtin.apt:
+    state: present
+    dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
+    name:
+      - ioncube-loader-82
+
 - name: Install deb packages for helping FreePBX (mostly from Sangoma repository.)
   become: true
   ansible.builtin.apt:
     state: present
     dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
     name:
-      - ioncube-loader-82
       - sysadmin17
       - sangoma-pbx17
       - ffmpeg
 
-- name: Install deb packages for FreePBX (mostly from Sangoma repository.)
+- name: Install the main deb package for FreePBX (from Sangoma repository.)
   become: true
   when: sfpd_install_freepbx
   ansible.builtin.apt:
@@ -260,7 +268,7 @@
     name:
       - colorized-logs
 
-- name: Hold a couple packages that will use non-apt upgrade methods.
+- name: Hold a couple packages that will use non-apt upgrade methods in the future.
   become: true
   ansible.builtin.dpkg_selections:
     selection: hold

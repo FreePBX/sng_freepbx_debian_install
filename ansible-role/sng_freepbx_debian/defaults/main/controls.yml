@@ -9,6 +9,7 @@
 
 sfpd_install_asterisk: true
 sfpd_install_freepbx: true
+sfpd_install_ioncube: true
 sfpd_install_testing: false
 
 # Another good choice might be the LTS version 20.
