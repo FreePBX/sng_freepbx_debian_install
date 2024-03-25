@@ -4,7 +4,7 @@
 ---
 # file: sng_freepbx_debian/tasks/packages.yml
 
-- name: Fix broken packages, if any, and update the repos.
+- name: Fix broken packages, if any, and update the repositories.
   become: true
   ansible.builtin.apt:
     state: fixed
@@ -32,7 +32,7 @@
     - { q: "mailname",          a: "{{ sfpd_mailname }}" }
     - { q: "main_mailer_type",  a: "{{ sfpd_main_mailer_type }}" }
 
-- name: Install basic deb packages from main Debian repos that are lacking from some cloud providers.
+- name: Install basic deb packages from main Debian repositories that are lacking from some cloud providers.
   become: true
   ansible.builtin.apt:
     state: present
@@ -41,7 +41,7 @@
       - cron
       - task-ssh-server
 
-- name: Install deb packages from main Debian repos.
+- name: Install deb packages from main Debian repositories.
   become: true
   ansible.builtin.apt:
     state: present
@@ -154,7 +154,7 @@
       - xinetd
       - zip
 
-- name: Install deb packages for MongoDB (from MongoDB Ubuntu repo.)
+- name: Install deb packages for MongoDB (from MongoDB Ubuntu repository.)
   become: true
   ansible.builtin.apt:
     state: present
@@ -167,7 +167,7 @@
     state: directory
   register: tmpfdk
 
-- name: Download non-free libfdk-aac2 (from Debian non-free repo.)
+- name: Download non-free libfdk-aac2 (from Debian non-free repository.)
   ansible.builtin.get_url:
     url: "{{ sfpd_libfdk_baseurl }}/{{ item }}"
     dest: "{{ tmpfdk.path }}"
@@ -193,7 +193,7 @@
     state: present
     autoremove: true
 
-- name: Install deb packages for Asterisk (mostly from Sangoma repo.)
+- name: Install deb packages for Asterisk (mostly from Sangoma repository.)
   become: true
   when: sfpd_install_asterisk
   ansible.builtin.apt:
@@ -223,7 +223,7 @@
       - asterisk{{ sfpd_asterisk_version }}.0-freepbx-asterisk-modules
       - asterisk-version-switch
 
-- name: Install deb packages for Asterisk sounds (mostly from Sangoma repo.)
+- name: Install deb packages for Asterisk sounds (mostly from Sangoma repository.)
   become: true
   when: sfpd_install_asterisk
   ansible.builtin.apt:
@@ -232,7 +232,7 @@
     name:
       - asterisk-sounds-*
 
-- name: Install deb packages for helping FreePBX (mostly from Sangoma repo.)
+- name: Install deb packages for helping FreePBX (mostly from Sangoma repository.)
   become: true
   ansible.builtin.apt:
     state: present
@@ -243,7 +243,7 @@
       - sangoma-pbx17
       - ffmpeg
 
-- name: Install deb packages for FreePBX (mostly from Sangoma repo.)
+- name: Install deb packages for FreePBX (mostly from Sangoma repository.)
   become: true
   when: sfpd_install_freepbx
   ansible.builtin.apt:
@@ -252,7 +252,7 @@
     name:
       - freepbx17
 
-- name: Install deb packages from main Debian repos (extras beyond the bash script.)
+- name: Install deb packages from main Debian repositories (extras beyond the bash script.)
   become: true
   ansible.builtin.apt:
     state: present

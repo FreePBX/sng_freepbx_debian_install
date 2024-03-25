@@ -35,11 +35,11 @@ Ansible Role from [Penguin PBX Solutions](https://PenguinPBX.com).*
 
         sudo apt-get install ansible sshpass git
 
-3. Clone the freepbx/sng_freepbx_debian_install repo:
+3. Clone the freepbx/sng_freepbx_debian_install repository:
 
         git clone https://github.com/FreePBX/sng_freepbx_debian_install.git
 
-4. Change into the ansible-repo directory:
+4. Change into the ansible-role directory:
 
         cd sng_freepbx_debian_install/ansible-role/sng_freepbx_debian
 
