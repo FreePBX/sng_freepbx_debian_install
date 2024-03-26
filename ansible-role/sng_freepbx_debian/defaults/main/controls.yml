@@ -16,6 +16,7 @@ sfpd_install_testing: false
 sfpd_asterisk_version: 21
 
 # The postfix mail config is janky.
+# Current upstream bash installer uses hostname -f as the mailname.
 sfpd_mailname: "my.hostname.example"
 sfpd_main_mailer_type: "Internet Site"
 
