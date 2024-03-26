@@ -51,11 +51,15 @@
     regexp: 'AllowOverride None'
     replace: 'AllowOverride All'
 
-- name: Enable Apache rewrite module.
+- name: Enable some Apache modules.
   become: true
   community.general.apache2_module:
     state: present
-    name: rewrite
+    name: "{{ item }}"
+  loop:
+    - expires
+    - rewrite
+    - ssl
 
 # See https://github.com/FreePBX/sng_freepbx_debian_install/pull/2/commits/d60b47346597212798b7bb885956979a9db161d8
 - name: Disable ServerTokens to provide less information to attackers.

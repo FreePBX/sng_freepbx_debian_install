@@ -20,14 +20,17 @@
     name: fail2ban
     state: restarted
 
-- name: Install FreePBX sysadmin module.
+- name: Install FreePBX sysadmin and sangomaconnect modules.
   become: true
   ansible.builtin.command:
     argv:
       - /sbin/fwconsole
       - ma
       - install
-      - sysadmin
+      - "{{ item }}"
+  loop:
+    - sysadmin
+    - sangomaconnect
   environment:
     PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
   ignore_errors: true
