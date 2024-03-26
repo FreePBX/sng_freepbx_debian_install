@@ -42,7 +42,10 @@ fi
 
 # Initialize logging
 mkdir -p "${LOG_FOLDER}"
-echo "" > $LOG_FILE
+echo "" > "${LOG_FILE}"
+echo "${SCRIPTVER}" >> "${LOG_FILE}"
+echo "${DISTRIBUTION}" >> "${LOG_FILE}"
+echo "" >> "${LOG_FILE}"
 
 # Get parameters
 POSITIONAL_ARGS=()
@@ -50,32 +53,28 @@ POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
 	case $1 in
 		--testing)
-			testrepo=true
+			# testrepo=true
 			sfpd_install_testing=true # for ansible
 			shift # past argument
 			;;
 		--nofreepbx)
-			nofpbx=true
+			# nofpbx=true
 			sfpd_install_freepbx=false # for ansible
 			shift # past argument
 			;;
 		--noasterisk)
-			noast=true
+			# noast=true
 			sfpd_install_asterisk=false # for ansible
 			shift # past argument
 			;;
 		--noioncube)
-			noioncube=true
+			# noioncube=true
 			sfpd_install_ioncube=false # for ansible
 			shift # past argument
 			;;
 		-*|--*)
 			echo "Unknown option $1"
 			exit 1
-			;;
-		*)
-			POSITIONAL_ARGS+=("$1") # save positional arg
-			shift # past argument
 			;;
 	esac
 done
@@ -124,4 +123,4 @@ set +x
 
 echo -n "STOP: " && date
 
-} 2>&1 | tee -a $LOG_FILE
+} 2>&1 | tee -a "${LOG_FILE}"
