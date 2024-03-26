@@ -32,7 +32,7 @@
     - { q: "mailname",          a: "{{ sfpd_mailname }}" }
     - { q: "main_mailer_type",  a: "{{ sfpd_main_mailer_type }}" }
 
-- name: Install basic deb packages from main Debian repositories that are lacking from some cloud providers.
+- name: Install deb packages from Debian that some clouds lack.
   become: true
   ansible.builtin.apt:
     state: present
@@ -41,7 +41,7 @@
       - cron
       - task-ssh-server
 
-- name: Install deb packages from main Debian repositories.
+- name: Install deb packages from Debian.
   become: true
   ansible.builtin.apt:
     state: present
@@ -259,7 +259,7 @@
     name:
       - freepbx17
 
-- name: Install extra Debian packages.
+- name: Install extra deb packages from Debian.
   become: true
   ansible.builtin.apt:
     state: present

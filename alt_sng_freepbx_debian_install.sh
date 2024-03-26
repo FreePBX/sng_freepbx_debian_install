@@ -42,14 +42,9 @@ fi
 
 # Initialize logging
 mkdir -p "${LOG_FOLDER}"
-echo "" > "${LOG_FILE}"
-echo "${SCRIPTVER}" >> "${LOG_FILE}"
-echo "${DISTRIBUTION}" >> "${LOG_FILE}"
-echo "" >> "${LOG_FILE}"
+echo "SCRIPTVER: ${SCRIPTVER} DISTRIBUTION: ${DISTRIBUTION}" > "${LOG_FILE}"
 
 # Get parameters
-POSITIONAL_ARGS=()
-
 while [[ $# -gt 0 ]]; do
 	case $1 in
 		--testing)
