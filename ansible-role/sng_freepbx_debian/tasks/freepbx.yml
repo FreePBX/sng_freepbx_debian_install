@@ -14,11 +14,13 @@
       - /usr/sbin/phpenmod
       - freepbx
 
+# TODO: only ignore when in Docker
 - name: Restart fail2ban.
   become: true
   ansible.builtin.systemd:
     name: fail2ban
     state: restarted
+  ignore_errors: true
 
 - name: Install FreePBX sysadmin and sangomaconnect modules.
   become: true
@@ -112,21 +114,25 @@
     PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
   ignore_errors: true
 
+# TODO: only ignore when in Docker
 - name: Reload SystemD to catch new FreePBX service changes.
   become: true
   ansible.builtin.systemd:
     daemon_reload: true
+  ignore_errors: true
 
 - name: Give SystemD a moment to catch-up.
   delegate_to: localhost
   ansible.builtin.wait_for:
     timeout: 2
 
+# TODO: only ignore when in Docker
 - name: Enable FreePBX service via SystemD.
   become: true
   ansible.builtin.systemd:
     name: freepbx
     enabled: true
+  ignore_errors: true
 
 - name: "Join us on the FreePBX Community Forum: https://community.freepbx.org/"
   become: true
