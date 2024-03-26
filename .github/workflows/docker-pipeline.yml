@@ -1,0 +1,14 @@
+---
+# .github/workflows/docker-pipeline.yml
+
+name: FreePBX alternate installer
+
+on: push
+
+jobs:
+  build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
