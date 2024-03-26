@@ -72,7 +72,7 @@ while [[ $# -gt 0 ]]; do
 			sfpd_install_ioncube=false # for ansible
 			shift # past argument
 			;;
-		-*|--*)
+		*)
 			echo "Unknown option $1"
 			exit 1
 			;;

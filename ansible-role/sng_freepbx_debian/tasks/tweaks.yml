@@ -31,6 +31,7 @@
     line: "openssl_conf = default_conf"
 
 # TODO: what year is this that ipv6 is disabled ?
+# ignoring errors to support docker pipeline
 - name: Disabling ipv6 to make life easier (especially for nodeJS localhost resolution.)
   become: true
   ansible.posix.sysctl:
@@ -41,6 +42,7 @@
     - { n: "net.ipv6.conf.all.disable_ipv6",      v: "1" }
     - { n: "net.ipv6.conf.default.disable_ipv6",  v: "1" }
     - { n: "net.ipv6.conf.lo.disable_ipv6",       v: "1" }
+  ignore_errors: true
 
 # TODO: screen rc
 # TODO: vim rc
