@@ -9,7 +9,11 @@
 # You can run this directly on your TARGET machine.
 # It supports the same command line arguments as the main installer.
 #
+
+# Exit immediately if a command exits with a non-zero status.
 set -e
+
+# Defaults from main installer
 SCRIPTVER="1.1-alt"
 ASTVERSION=21
 AACVERSION="2.0.1-1"
@@ -17,6 +21,12 @@ PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-alt-$(date '+%Y.%m.%d-%H.%M.%S').log"
 DISTRIBUTION="$(lsb_release -is)"
+
+# Defaults for ansible
+sfpd_install_testing=false
+sfpd_install_freepbx=true
+sfpd_install_asterisk=true
+sfpd_install_ioncube=true
 
 # Check if we are bash shell
 if [ "${EUID}" = "" ]; then
