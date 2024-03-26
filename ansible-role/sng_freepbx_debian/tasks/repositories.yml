@@ -15,7 +15,7 @@
 - name: Setup the Sangoma Debian Repo the deb822 way for many, many packages.
   become: true
   ansible.builtin.copy:
-    src: 20-sangoma-fpbx-repository-{{ sfpd_install_testing | ternary('dev', 'prod') }}.sources
+    src: 20-sangoma-fpbx-repository-{{ sfpd_install_testing | default(false) | bool | ternary('dev', 'prod') }}.sources
     dest: /etc/apt/sources.list.d/
 
 # TODO: warn the user per https://wiki.debian.org/DebianRepository/UseThirdParty (Standard pinning section)

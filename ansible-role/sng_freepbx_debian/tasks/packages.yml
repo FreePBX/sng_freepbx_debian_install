@@ -50,7 +50,6 @@
       - apache2
       - autoconf
       - automake
-      - bc
       - bison
       - build-essential
       - chrony
@@ -154,7 +153,7 @@
       - xinetd
       - zip
 
-- name: Install deb packages for MongoDB (from MongoDB Ubuntu repository.)
+- name: Install deb packages for MongoDB from MongoDB Ubuntu repository.
   become: true
   ansible.builtin.apt:
     state: present
@@ -167,14 +166,14 @@
     state: directory
   register: tmpfdk
 
-- name: Download non-free libfdk-aac2 (from Debian non-free repository.)
+- name: Download non-free libfdk-aac2 from Debian repository.
   ansible.builtin.get_url:
     url: "{{ sfpd_libfdk_baseurl }}/{{ item }}"
     dest: "{{ tmpfdk.path }}"
     mode: "0500"
   loop:
-    - "{{ sfpd_libfdk_aac }}"
-    - "{{ sfpd_libfdk_aac_dev }}"
+    - "libfdk-aac2_{{ sfpd_aac_version }}_amd64.deb"
+    - "libfdk-aac-dev_{{ sfpd_aac_version }}_amd64.deb"
 
 - name: Install non-free libfdk-aac2.
   become: true
@@ -184,8 +183,8 @@
   environment:
     PATH: "{{ ansible_env.PATH }}:/sbin:/usr/sbin"
   loop:
-    - "{{ sfpd_libfdk_aac }}"
-    - "{{ sfpd_libfdk_aac_dev }}"
+    - "libfdk-aac2_{{ sfpd_aac_version }}_amd64.deb"
+    - "libfdk-aac-dev_{{ sfpd_aac_version }}_amd64.deb"
 
 - name: Run autoremove (might not be necessary.)
   become: true
@@ -193,9 +192,9 @@
     state: present
     autoremove: true
 
-- name: Install deb packages for Asterisk (mostly from Sangoma repository.)
+- name: Install deb packages from Sangoma for Asterisk.
   become: true
-  when: sfpd_install_asterisk
+  when: sfpd_install_asterisk|default(true)|bool
   ansible.builtin.apt:
     state: present
     dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
@@ -223,25 +222,25 @@
       - asterisk{{ sfpd_asterisk_version }}.0-freepbx-asterisk-modules
       - asterisk-version-switch
 
-- name: Install deb packages for Asterisk sounds (mostly from Sangoma repository.)
+- name: Install deb packages from Sangoma for Asterisk sounds.
   become: true
-  when: sfpd_install_asterisk
+  when: sfpd_install_asterisk|default(true)|bool
   ansible.builtin.apt:
     state: present
     dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
     name:
       - asterisk-sounds-*
 
-- name: Install ioncube deb packages for helping FreePBX (mostly from Sangoma repository.)
+- name: Install deb packages from Sangoma for ioncube obfuscation.
   become: true
-  when: sfpd_install_ioncube
+  when: sfpd_install_ioncube|default(true)|bool
   ansible.builtin.apt:
     state: present
     dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
     name:
       - ioncube-loader-82
 
-- name: Install deb packages for helping FreePBX (mostly from Sangoma repository.)
+- name: Install deb packages from Sangoma for helping FreePBX.
   become: true
   ansible.builtin.apt:
     state: present
@@ -251,16 +250,16 @@
       - sangoma-pbx17
       - ffmpeg
 
-- name: Install the main deb package for FreePBX (from Sangoma repository.)
+- name: Install main deb package from Sangoma for FreePBX.
   become: true
-  when: sfpd_install_freepbx
+  when: sfpd_install_freepbx|default(true)|bool
   ansible.builtin.apt:
     state: present
     dpkg_options: "{{ omit if sfpd_fast == 'true' else 'force-confnew,force-overwrite' }}"
     name:
       - freepbx17
 
-- name: Install deb packages from main Debian repositories (extras beyond the bash script.)
+- name: Install extra Debian packages.
   become: true
   ansible.builtin.apt:
     state: present
@@ -268,7 +267,7 @@
     name:
       - colorized-logs
 
-- name: Hold a couple packages that will use non-apt upgrade methods in the future.
+- name: Hold packages that use non-apt upgrade methods.
   become: true
   ansible.builtin.dpkg_selections:
     selection: hold

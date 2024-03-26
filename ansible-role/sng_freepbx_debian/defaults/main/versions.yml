@@ -9,3 +9,6 @@
 pngnx_php_major: 8
 pngnx_php_minor: 2
 pngnx_php_version: "{{ pngnx_php_major }}.{{ pngnx_php_minor }}"
+
+# specific to the Sangoma installer
+sfpd_aac_version: "2.0.1-1"
