@@ -11,7 +11,7 @@ on:
       - v*.*.*
 
 jobs:
-  gh-release:
+  release:
     name: GitHub Release
     runs-on: ubuntu-latest
     steps:
