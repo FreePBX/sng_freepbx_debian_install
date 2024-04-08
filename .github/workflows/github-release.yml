@@ -6,13 +6,12 @@
 name: GitHub Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
       - v*.*.*
 
 jobs:
-  build:
+  gh-release:
     name: GitHub Release
     runs-on: ubuntu-latest
     steps:
