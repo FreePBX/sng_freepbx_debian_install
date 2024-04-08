@@ -5,10 +5,7 @@
 
 name: GitHub Release
 
-on:
-  push:
-    tags:
-      - v*.*.*
+on: push
 
 jobs:
   release:

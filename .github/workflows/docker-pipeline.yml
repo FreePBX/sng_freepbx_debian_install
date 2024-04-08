@@ -6,7 +6,7 @@ name: Docker build
 on: push
 
 jobs:
-  build:
+  docker-build:
     name: Docker build
     runs-on: ubuntu-latest
     steps:
