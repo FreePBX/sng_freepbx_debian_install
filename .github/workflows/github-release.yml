@@ -1,18 +1,18 @@
 ---
-# .github/workflows/gh-release.yml
+# .github/workflows/github-release.yml
 
 # Continuous Delivery of GitHub Releases when push is tagged with a version number
 
-name: GH Release
+name: GitHub Release
 
 on:
   push:
     tags:
-      - "v*.*.*"
+      - v*.*.*
 
 jobs:
   build:
-    name: GH Release
+    name: GitHub Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
