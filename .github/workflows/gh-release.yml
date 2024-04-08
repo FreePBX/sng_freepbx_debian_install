@@ -1,6 +1,8 @@
 ---
 # .github/workflows/gh-release.yml
 
+# Continuous Delivery of GitHub Releases when push is tagged with a version number
+
 name: GH Release
 
 on:
