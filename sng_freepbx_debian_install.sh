@@ -23,7 +23,7 @@
 #####################################################################################
 export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 set -e
-SCRIPTVER="1.1"
+SCRIPTVER="1.2"
 ASTVERSION=21
 AACVERSION="2.0.1-1"
 PHPVERSION="8.2"
