@@ -156,6 +156,23 @@ install_mongodb() {
 	fi
 }
 
+
+# Function to install the libfdk-aac
+install_libfdk() {
+      if isinstalled libfdk-aac2; then
+            log "libfdk-aac2 already installed ...."
+      else
+            message "Installing libfdk-aac2...."
+            apt-get install -y libfdk-aac2 >> "$log" 2>&1
+      if isinstalled libfdk-aac2; then
+            message "libfdk-aac2 installed successfully....."
+      else
+            message "libfdk-aac2 failed to install ...."
+            exit 1
+      fi
+fi
+}
+
 # Function to install the asterisk and dependent packages
 install_asterisk() {
 	astver=$1
@@ -218,6 +235,8 @@ setup_repositories() {
 
 	wget -qO - https://pgp.mongodb.com/server-7.0.asc | gpg  --dearmor --yes -o /etc/apt/trusted.gpg.d/mongodb-server-7.0.gpg >> "$log" 2>&1
 	add-apt-repository -y -S "deb [ arch=${arch} ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" >> "$log" 2>&1
+
+      add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free" >> "$log" 2>&1
 
 	setCurrentStep "Setting up Sangoma repository"
 cat <<EOF> /etc/apt/preferences.d/99sangoma-fpbx-repository
@@ -413,16 +432,7 @@ install_mongodb
 
 # Install libfdk
 setCurrentStep "Setting up libfdk"
-if isinstalled libfdk-aac-dev; then
-	log "libfdk-aac2 already present...."
-else
-	wget "http://deb.debian.org/debian/pool/non-free/f/fdk-aac/libfdk-aac-dev_${AACVERSION}_${arch}.deb" -O "/tmp/libfdk-aac-dev_${AACVERSION}_${arch}.deb" >> "$log" 2>&1
-	wget "http://deb.debian.org/debian/pool/non-free/f/fdk-aac/libfdk-aac2_${AACVERSION}_${arch}.deb" -O "/tmp/libfdk-aac2_${AACVERSION}_${arch}.deb" >> "$log" 2>&1
-	dpkg -i /tmp/libfdk-aac2_${AACVERSION}_${arch}.deb >> "$log" 2>&1
-	dpkg -i /tmp/libfdk-aac-dev_${AACVERSION}_${arch}.deb >> "$log" 2>&1
-	rm -f /tmp/libfdk-aac2_${AACVERSION}_${arch}.deb >> "$log" 2>&1
-	rm -f /tmp/libfdk-aac-dev_${AACVERSION}_${arch}.deb >> "$log" 2>&1
-fi
+install_libfdk
 
 setCurrentStep "Removing unnecessary packages"
 apt autoremove -y >> "$log" 2>&1
