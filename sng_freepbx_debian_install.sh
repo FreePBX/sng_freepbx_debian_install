@@ -597,30 +597,32 @@ if [ $nofpbx ] ; then
 else
 	setCurrentStep "Installing FreePBX 17"
 	pkg_install freepbx17
+
+	# Reinstalling modules to ensure all the modules are enabled/installed
+  setCurrentStep "Installing Sysadmin module"
+  fwconsole ma install sysadmin >> $log 2>&1
+
+  #Not installing sangoma connect result in failure of first installlocal
+  setCurrentStep "Installing sangomaconnectmodule"
+  fwconsole ma install sangomaconnect>> $log 2>&1
+
+  setCurrentStep "Installing install local module"
+  fwconsole ma installlocal >> $log 2>&1
+
+  setCurrentStep "Upgrading FreePBX 17 modules"
+  fwconsole ma upgradeall >> $log 2>&1
+
+  setCurrentStep "reloading and restarting FreePBX 17"
+  fwconsole reload >> $log 2>&1
+  fwconsole restart >> $log 2>&1
 fi
-
-# Reinstalling modules to ensure all the modules are enabled/installed
-setCurrentStep "Installing Sysadmin module"
-fwconsole ma install sysadmin >> $log 2>&1
-
-#Not installing sangoma connect result in failure of first installlocal
-setCurrentStep "Installing sangomaconnectmodule"
-fwconsole ma install sangomaconnect>> $log 2>&1
-
-setCurrentStep "Installing install local module"
-fwconsole ma installlocal >> $log 2>&1
-
-setCurrentStep "Upgrading FreePBX 17 modules"
-fwconsole ma upgradeall >> $log 2>&1
-
-setCurrentStep "reloading and restarting FreePBX 17"
-fwconsole reload >> $log 2>&1
-fwconsole restart >> $log 2>&1
 
 
 setCurrentStep "Wrapping up the installation process"
 systemctl daemon-reload >> "$log" 2>&1
-systemctl enable freepbx >> "$log" 2>&1
+if [ ! $nofpbx ] ; then
+  systemctl enable freepbx >> "$log" 2>&1
+fi
 
 #delete apache2 index.html as we do not need that file
 rm -f /var/www/html/index.html
@@ -651,10 +653,14 @@ sed -i 's/\(^ServerSignature \).*/\1Off/' /etc/apache2/conf-available/security.c
 systemctl restart apache2 >> "$log" 2>&1
 
 # Refresh signatures
-fwconsole ma refreshsignatures >> "$log" 2>&1
+if [ ! $nofpbx ] ; then
+  fwconsole ma refreshsignatures >> "$log" 2>&1
+fi
 
 #Do not want to upgrade initial(first time setup) packages
-apt-mark hold freepbx17
+if [ ! $nofpbx ] ; then
+	apt-mark hold freepbx17
+fi
 apt-mark hold sangoma-pbx17
 
 setCurrentStep "Installation successful."
@@ -666,4 +672,6 @@ message "Total script Execution Time: $execution_time"
 message "Finished FreePBX 17 installation process for $host $kernel"
 message "Join us on the FreePBX Community Forum: https://community.freepbx.org/ ";
 
-fwconsole motd
+if [ ! $nofpbx ] ; then
+  fwconsole motd
+fi
