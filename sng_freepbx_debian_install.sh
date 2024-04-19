@@ -637,7 +637,7 @@ rm -f /var/www/html/index.html
 a2enmod rewrite >> "$log" 2>&1
 
 #Enabling freepbx apache configuration
-cd /etc/apache2/sites-enabled/ && ln -s ../sites-available/freepbx.conf freepbx.conf >> "$log" 2>&1
+a2ensite freepbx.conf
 
 #Setting postfix size to 100MB
 /usr/sbin/postconf -e message_size_limit=102400000
