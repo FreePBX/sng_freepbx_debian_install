@@ -89,7 +89,6 @@ check_version() {
                         exit 0
                 else
                         echo "Perfect! You're already running the latest version."
-                        exit 0
                 fi
             ;;
         esac
