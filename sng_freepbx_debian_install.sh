@@ -16,7 +16,7 @@
 # This FreePBX install script and all concepts are property of
 # Sangoma Technologies.
 # This install script is free to use for installing FreePBX
-# along with dependent packages only but carries no guarnatee on performance
+# along with dependent packages only but carries no guarantee on performance
 # and is used at your own risk.  This script carries NO WARRANTY.
 #####################################################################################
 #                                               FreePBX 17                          #
@@ -44,7 +44,7 @@ echo "" > $log
 # Get parameters
 POSITIONAL_ARGS=()
 
-#compairing version
+#Comparing version
 compare_version() {
         if dpkg --compare-versions "$1" "gt" "$2"; then
                 result=0
@@ -112,7 +112,11 @@ while [[ $# -gt 0 ]]; do
 			shift # past argument
 			;;
                 --skipversion)
-                        skipversion=ture
+                        skipversion=true
+                        shift # past argument
+                        ;;
+		--dahdi)
+                        dahdi=true
                         shift # past argument
                         ;;
 		-*|--*)
@@ -165,7 +169,7 @@ terminate() {
 errorHandler() {
 	log "****** INSTALLATION FAILED *****"
 	message "Installation failed at step ${currentStep}. Please check log ${LOG_FILE} for details."
-	message "Error at line line: $1 exiting with code $2 (last command was: $3)"
+	message "Error at line: $1 exiting with code $2 (last command was: $3)"
 	exit "$2"
 }
 
@@ -342,7 +346,7 @@ message "  Starting FreePBX 17 installation process for $host $kernel"
 message "  Please refer to the $log to know the process..."
 log "  Executing script v$SCRIPTVER ..."
 
-setCurrentStep "Making sure installation is sane"
+setCurrentStep "Making sure installation is same"
 # Fixing broken install
 apt -y --fix-broken install >> $log 2>&1
 apt autoremove -y >> "$log" 2>&1
@@ -486,6 +490,27 @@ for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
 done
 
+# Install Dahdi card support if --dahdi option is provided
+if [[ "$dahdi" == true ]]; then
+    echo "Installing Dahdi card support..."
+    kernel_version=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+    DAHDIPKGS=("asterisk21-dahdi"
+           "dahdi-firmware"
+           "dahdi-linux"
+           "dahdi-linux-devel"
+           "dahdi-tools"
+           "libpri"
+           "libpri-devel"
+           "wanpipe"
+           "wanpipe-devel"
+           "dahdi-linux-kmod-${kernel_version}"
+           "kmod-wanpipe-${kernel_version}"
+	)
+
+        for i in "${!DAHDIPKGS[@]}"; do
+                pkg_install ${DAHDIPKGS[$i]}
+        done
+fi
 
 # Install mongod
 setCurrentStep "Setting up MongoDB"
