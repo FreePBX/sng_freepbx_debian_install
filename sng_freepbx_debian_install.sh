@@ -23,7 +23,7 @@
 #####################################################################################
 export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 set -e
-SCRIPTVER="1.1"
+SCRIPTVER="1.2"
 ASTVERSION=21
 AACVERSION="2.0.1-1"
 PHPVERSION="8.2"
@@ -44,6 +44,56 @@ echo "" > $log
 # Get parameters
 POSITIONAL_ARGS=()
 
+#compairing version
+compare_version() {
+        if dpkg --compare-versions "$1" "gt" "$2"; then
+                result=0
+        elif dpkg --compare-versions "$1" "lt" "$2"; then
+                result=1
+        else
+                result=2
+        fi
+}
+
+check_version() {
+    # Fetching latest version and checksum
+    REPO_URL="https://github.com/FreePBX/sng_freepbx_debian_install/raw/master"
+    wget -q -O /tmp/sng_freepbx_debian_install_latest_from_github.sh "$REPO_URL/sng_freepbx_debian_install.sh"
+
+    latest_version=$(grep '^SCRIPTVER="' /tmp/sng_freepbx_debian_install_latest_from_github.sh | awk -F'"' '{print $2}')
+    latest_checksum=$(sha256sum /tmp/sng_freepbx_debian_install_latest_from_github.sh | awk '{print $1}')
+
+    # Cleaning up downloaded file
+    rm -f /tmp/sng_freepbx_debian_install_latest_from_github.sh
+
+    compare_version $SCRIPTVER $latest_version
+
+    case $result in
+            0)
+                echo "Your version ($SCRIPTVER) of installation script is ahead of the latest version ($latest_version) as present on the GitHub. We recommend you to Download the version present in the GitHub."
+                echo "Use '$0 --skipversion' to skip the version check"
+                exit 1
+            ;;
+
+            1)
+                echo "A newer version ($latest_version) of installation script is available on GitHub. We recommend you to update it or use the latest one from the GitHub."
+                echo "Use '$0 --skipversion' to skip the version check."
+                exit 0
+            ;;
+
+            2)
+                local_checksum=$(sha256sum "$0" | awk '{print $1}')
+                if [[ "$latest_checksum" != "$local_checksum" ]]; then
+                        echo "Changes are detected between the local installation script and the latest installation script as present on GitHub. We recommend you to please use the latest installation script as present on GitHub."
+                        echo "Use '$0 --skipversion' to skip the version check"
+                        exit 0
+                else
+                        echo "Perfect! You're already running the latest version."
+                        exit 0
+                fi
+            ;;
+        esac
+}
 while [[ $# -gt 0 ]]; do
 	case $1 in
 		--testing)
@@ -62,6 +112,10 @@ while [[ $# -gt 0 ]]; do
 			noioncube=true
 			shift # past argument
 			;;
+                --skipversion)
+                        skipversion=ture
+                        shift # past argument
+                        ;;
 		-*|--*)
 			echo "Unknown option $1"
 			exit 1
@@ -72,6 +126,14 @@ while [[ $# -gt 0 ]]; do
 			;;
 	esac
 done
+
+if [[ $skipversion ]]; then
+    echo "Skipping version check..."
+else
+    # Perform version check if --skipversion is not provided
+    echo "Performing version check..."
+    check_version
+fi
 
 
 #Helpers APIs
