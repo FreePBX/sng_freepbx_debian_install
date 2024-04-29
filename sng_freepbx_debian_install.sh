@@ -313,6 +313,141 @@ Pin-Priority: ${MIRROR_PRIO}
 EOF
 }
 
+check_services() {
+    services=("fail2ban" "iptables")
+    for service in "${services[@]}"; do
+        service_status=$(systemctl is-active "$service")
+        if [[ "$service_status" != "active" ]]; then
+            message "Service $service is not active. Please ensure it is running."
+        fi
+    done
+
+    apache2_status=$(systemctl is-active apache2)
+    if [[ "$apache2_status" == "active" ]]; then
+        apache_process=$(netstat -anp | awk '$4 ~ /:80$/ {sub(/.*\//,"",$7); print $7}')
+        if [ "$apache_process" == "apache2" ]; then
+            message "Apache2 service is running on port 80."
+        else
+            message "Apache2 is not running in port 80."
+        fi
+    else
+        message "The Apache2 service is not active. Please activate the service"
+    fi
+}
+
+check_php_version() {
+    php_version=$(php -v | grep built: | awk '{print $2}')
+    if [[ "${php_version:0:3}" == "8.2" ]]; then
+        message "Installed PHP version $php_version is compatible with FreePBX."
+    else
+        message "Installed PHP version  $php_version is not compatible with FreePBX. Please install PHP version '8.2.x'"
+    fi
+}
+
+verify_module_status() {
+    modules_list=$(fwconsole ma list | grep -Ewv "Enabled|----|Module|No repos")
+    if [ -z "$modules_list" ]; then
+        message "All Modules are Enabled."
+    else
+        message "List of modules which are not Enabled:"
+        message "$modules_list"
+    fi
+}
+
+# Function to check assigned ports for services
+inspect_network_ports() {
+    # Array of port and service pairs
+    local ports_services=(
+        82 restapps
+        83 restapi
+        81 ucp
+        80 acp
+        84 hpro
+        "" leport
+        "" sslrestapps
+        "" sslrestapi
+        "" sslucp
+        "" sslacp
+        "" sslhpro
+        "" sslsngphone
+    )
+
+    for (( i=0; i<${#ports_services[@]}; i+=2 )); do
+        port="${ports_services[i]}"
+        service="${ports_services[i+1]}"
+        port_set=$(fwconsole sa ports | grep "$service" | cut -d'|' -f 2 | tr -d '[:space:]')
+
+        if [ "$port_set" == "$port" ]; then
+            message "$service module is assigned to its default port."
+        else
+            message "$service module is expected to have port $port assigned instead of $port_set"
+        fi
+    done
+}
+
+inspect_running_processes() {
+    processes=$(fwconsole pm2 --list |  grep -Ewv "online|----|Process")
+    if [ -z "$processes" ]; then
+        message "No Offline Processes found."
+    else
+        message "List of Offline processes:"
+        message "$processes"
+    fi
+}
+
+check_freepbx() {
+     # Check if FreePBX is installed
+    if ! dpkg -l | grep -q 'freepbx'; then
+        message "FreePBX is not installed. Please install FreePBX to proceed."
+    else
+        verify_module_status
+        inspect_network_ports
+        inspect_running_processes
+        inspect_job_status=$(fwconsole job --list)
+        message "Job list : $inspect_job_status"
+    fi
+}
+
+check_digium_phones_version() {
+    installed_version=$(asterisk -rx 'digium_phones show version' | awk '/Version/{print $NF}' 2>/dev/null)
+    if [[ -n "$installed_version" ]]; then
+        required_version="21.0_3.6.8"
+        present_version=$(echo "$installed_version" | sed 's/_/./g')
+        required_version=$(echo "$required_version" | sed 's/_/./g')
+        if dpkg --compare-versions "$present_version" "lt" "$required_version"; then
+            message "A newer version of Digium Phones module is available."
+        else
+            message "Installed Digium Phones module version: ($installed_version)"
+        fi
+    else
+        message "Failed to check Digium Phones module version."
+    fi
+}
+
+check_digium_phones() {
+    license_status=$(asterisk -rx "digium_phones license status" 2>/dev/null)
+    if echo "$license_status" | grep -q "Module is disabled"; then
+        message "You are not using digium_phones licensed Version. Please Upgrade."
+    else
+        message "License status: $license_status"
+    fi
+
+    if asterisk -rx "module show" | grep -q "res_digium_phone.so"; then
+        check_digium_phones_version
+    else
+        message "Digium Phones module is not loaded. Please make sure it is installed and loaded correctly."
+    fi
+}
+
+check_asterisk() {
+    if ! dpkg -l | grep -q 'asterisk'; then
+        message "Asterisk is not installed. Please install Asterisk to proceed."
+    else
+        check_asterisk_version=$(asterisk -V)
+        message "$check_asterisk_version"
+        check_digium_phones
+    fi
+}
 
 ################################################################################################################
 MIRROR_PRIO=600
@@ -752,6 +887,20 @@ apt-mark hold sangoma-pbx17
 setCurrentStep "Installation successful."
 
 ############ TODO - POST INSTALL VALIDATION ############################################
+# Commands for post-installation validation
+# Disable automatic script termination upon encountering non-zero exit code to prevent premature termination.
+set +e
+setCurrentStep "Post-installation validation"
+
+check_services
+
+check_php_version
+
+if [ ! $nofpbx ] ; then
+ check_freepbx
+fi
+
+check_asterisk
 
 execution_time="$(($(date +%s) - $start))"
 message "Total script Execution Time: $execution_time"
