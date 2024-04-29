@@ -313,6 +313,18 @@ Pin-Priority: ${MIRROR_PRIO}
 EOF
 }
 
+# Function to execute command and log result
+execute_command() {
+    local command="$1"
+    local description="$2"
+
+    message "$description"
+    if $command &>> "$log"; then
+        message "$description: Success"
+    else
+        message "$description: Failed"
+    fi
+}
 
 ################################################################################################################
 MIRROR_PRIO=600
@@ -752,6 +764,89 @@ apt-mark hold sangoma-pbx17
 setCurrentStep "Installation successful."
 
 ############ TODO - POST INSTALL VALIDATION ############################################
+# Commands for post-installation validation
+setCurrentStep "Post-installation validation"
+which_cmd="/usr/bin/which"
+
+# Check status of Apache2 service
+if ! $which_cmd apache2 > /dev/null 2>&1; then
+    message "Apache2 is not installed. Please install Apache2 to proceed."
+else
+    execute_command "systemctl status apache2" "Checking Apache2 service status..."
+
+    # Check if Apache2 is listening on port 80
+    apache_process=$(netstat -anp | awk '$4 ~ /:80$/ {sub(/.*\//,"",$7); print $7}')
+    if [ "$apache_process" == "apache2" ]; then
+        echo "You are using the FreePBX UI with Apache2."
+    else
+        echo "The FreePBX UI might not be configured to use Apache2."
+    fi
+fi
+
+# Check status of Fail2ban service
+if ! $which_cmd fail2ban-server > /dev/null 2>&1; then
+    message "Fail2ban is not installed. Please install Fail2ban to proceed."
+else
+    execute_command "systemctl status fail2ban" "Checking Fail2ban service status..."
+fi
+
+# Check status of iptables service
+if ! $which_cmd iptables > /dev/null 2>&1; then
+    message "iptables is not installed. Please install iptables to proceed."
+else
+    execute_command "systemctl status iptables" "Checking iptables service status..."
+fi
+
+# Check if PHP is installed
+if ! $which_cmd php > /dev/null 2>&1; then
+    message "PHP is not installed. Please install PHP to proceed."
+else
+    execute_command "php -v" "Checking PHP version..."
+fi
+
+# Check if FreePBX is installed
+if ! dpkg -l | grep -q 'freepbx'; then
+    message "FreePBX is not installed. Please install FreePBX to proceed."
+else
+    execute_command "fwconsole ma list" "Listing installed FreePBX modules..."
+    execute_command "fwconsole sa ports" "Checking Asterisk ports in use..."
+    execute_command "fwconsole pm2 --list" "Listing PM2 processes..."
+    execute_command "fwconsole job --list" "Listing scheduled jobs..."
+fi
+
+# Check if Asterisk is installed
+if ! dpkg -l | grep -q 'asterisk'; then
+    message "Asterisk is not installed. Please install Asterisk to proceed."
+else
+    execute_command "asterisk -V" "Checking Asterisk version..."
+    license_status=$(asterisk -rx "digium_phones license status" 2>/dev/null)
+    if echo "$license_status" | grep -q "Module is disabled"; then
+        echo "You are not using digium_phones licensed Version. Please Upgrade."
+    else
+        echo "License status: $license_status"
+    fi
+
+    # Check if Digium Phones module is loaded
+    if asterisk -rx "module show" | grep -q "res_digium_phone.so"; then
+        # Digium Phones module is present, proceed to check its version
+        installed_version=$(asterisk -rx 'digium_phones show version' | awk '/Version/{print $NF}' 2>/dev/null)
+        if [[ -n "$installed_version" ]]; then
+            required_version="21.0_3.6.8"
+            installed_version=$(echo "$installed_version" | sed 's/_/./g')
+            required_version=$(echo "$required_version" | sed 's/_/./g')
+            if dpkg --compare-versions "$installed_version" "lt" "$required_version"; then
+                message "A newer version of Digium Phones module is available."
+            else
+                message "Installed Digium Phones module version: ($installed_version)"
+            fi
+        else
+            message "Failed to check Digium Phones module version."
+        fi
+    else
+        # Digium Phones module is not loaded, throw an error
+        message "Digium Phones module is not loaded. Please make sure it is installed and loaded correctly."
+    fi
+fi
 
 execution_time="$(($(date +%s) - $start))"
 message "Total script Execution Time: $execution_time"
