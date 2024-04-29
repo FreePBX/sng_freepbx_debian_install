@@ -490,6 +490,11 @@ for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
 done
 
+# OpenVPN EasyRSA configuration
+/usr/bin/make-cadir /etc/openvpn/easyrsa3
+rm -f /etc/openvpn/easyrsa3/pki/vars
+rm -f /etc/openvpn/easyrsa3/vars
+
 # Install Dahdi card support if --dahdi option is provided
 if [[ "$dahdi" == true ]]; then
     echo "Installing Dahdi card support..."
