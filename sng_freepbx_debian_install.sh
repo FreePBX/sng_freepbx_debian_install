@@ -16,14 +16,14 @@
 # This FreePBX install script and all concepts are property of
 # Sangoma Technologies.
 # This install script is free to use for installing FreePBX
-# along with dependent packages only but carries no guarnatee on performance
+# along with dependent packages only but carries no guarantee on performance
 # and is used at your own risk.  This script carries NO WARRANTY.
 #####################################################################################
 #                                               FreePBX 17                          #
 #####################################################################################
 export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 set -e
-SCRIPTVER="1.1"
+SCRIPTVER="1.2"
 ASTVERSION=21
 AACVERSION="2.0.1-1"
 PHPVERSION="8.2"
@@ -44,6 +44,55 @@ echo "" > $log
 # Get parameters
 POSITIONAL_ARGS=()
 
+#Comparing version
+compare_version() {
+        if dpkg --compare-versions "$1" "gt" "$2"; then
+                result=0
+        elif dpkg --compare-versions "$1" "lt" "$2"; then
+                result=1
+        else
+                result=2
+        fi
+}
+
+check_version() {
+    # Fetching latest version and checksum
+    REPO_URL="https://github.com/FreePBX/sng_freepbx_debian_install/raw/master"
+    wget -q -O /tmp/sng_freepbx_debian_install_latest_from_github.sh "$REPO_URL/sng_freepbx_debian_install.sh"
+
+    latest_version=$(grep '^SCRIPTVER="' /tmp/sng_freepbx_debian_install_latest_from_github.sh | awk -F'"' '{print $2}')
+    latest_checksum=$(sha256sum /tmp/sng_freepbx_debian_install_latest_from_github.sh | awk '{print $1}')
+
+    # Cleaning up downloaded file
+    rm -f /tmp/sng_freepbx_debian_install_latest_from_github.sh
+
+    compare_version $SCRIPTVER $latest_version
+
+    case $result in
+            0)
+                echo "Your version ($SCRIPTVER) of installation script is ahead of the latest version ($latest_version) as present on the GitHub. We recommend you to Download the version present in the GitHub."
+                echo "Use '$0 --skipversion' to skip the version check"
+                exit 1
+            ;;
+
+            1)
+                echo "A newer version ($latest_version) of installation script is available on GitHub. We recommend you to update it or use the latest one from the GitHub."
+                echo "Use '$0 --skipversion' to skip the version check."
+                exit 0
+            ;;
+
+            2)
+                local_checksum=$(sha256sum "$0" | awk '{print $1}')
+                if [[ "$latest_checksum" != "$local_checksum" ]]; then
+                        echo "Changes are detected between the local installation script and the latest installation script as present on GitHub. We recommend you to please use the latest installation script as present on GitHub."
+                        echo "Use '$0 --skipversion' to skip the version check"
+                        exit 0
+                else
+                        echo "Perfect! You're already running the latest version."
+                fi
+            ;;
+        esac
+}
 while [[ $# -gt 0 ]]; do
 	case $1 in
 		--testing)
@@ -62,6 +111,14 @@ while [[ $# -gt 0 ]]; do
 			noioncube=true
 			shift # past argument
 			;;
+                --skipversion)
+                        skipversion=true
+                        shift # past argument
+                        ;;
+		--dahdi)
+                        dahdi=true
+                        shift # past argument
+                        ;;
 		-*|--*)
 			echo "Unknown option $1"
 			exit 1
@@ -72,6 +129,14 @@ while [[ $# -gt 0 ]]; do
 			;;
 	esac
 done
+
+if [[ $skipversion ]]; then
+    echo "Skipping version check..."
+else
+    # Perform version check if --skipversion is not provided
+    echo "Performing version check..."
+    check_version
+fi
 
 
 #Helpers APIs
@@ -104,7 +169,7 @@ terminate() {
 errorHandler() {
 	log "****** INSTALLATION FAILED *****"
 	message "Installation failed at step ${currentStep}. Please check log ${LOG_FILE} for details."
-	message "Error at line line: $1 exiting with code $2 (last command was: $3)"
+	message "Error at line: $1 exiting with code $2 (last command was: $3)"
 	exit "$2"
 }
 
@@ -154,6 +219,23 @@ install_mongodb() {
 			exit 1
 		fi
 	fi
+}
+
+
+# Function to install the libfdk-aac
+install_libfdk() {
+      if isinstalled libfdk-aac2; then
+            log "libfdk-aac2 already installed ...."
+      else
+            message "Installing libfdk-aac2...."
+            apt-get install -y libfdk-aac2 >> "$log" 2>&1
+      if isinstalled libfdk-aac2; then
+            message "libfdk-aac2 installed successfully....."
+      else
+            message "libfdk-aac2 failed to install ...."
+            exit 1
+      fi
+fi
 }
 
 # Function to install the asterisk and dependent packages
@@ -219,6 +301,8 @@ setup_repositories() {
 	wget -qO - https://pgp.mongodb.com/server-7.0.asc | gpg  --dearmor --yes -o /etc/apt/trusted.gpg.d/mongodb-server-7.0.gpg >> "$log" 2>&1
 	add-apt-repository -y -S "deb [ arch=${arch} ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" >> "$log" 2>&1
 
+      add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free" >> "$log" 2>&1
+
 	setCurrentStep "Setting up Sangoma repository"
 cat <<EOF> /etc/apt/preferences.d/99sangoma-fpbx-repository
 # Allways prefer packages from deb.freepbx.org
@@ -262,7 +346,7 @@ message "  Starting FreePBX 17 installation process for $host $kernel"
 message "  Please refer to the $log to know the process..."
 log "  Executing script v$SCRIPTVER ..."
 
-setCurrentStep "Making sure installation is sane"
+setCurrentStep "Making sure installation is same"
 # Fixing broken install
 apt -y --fix-broken install >> $log 2>&1
 apt autoremove -y >> "$log" 2>&1
@@ -343,6 +427,7 @@ DEPPKGS=("redis-server"
 	"php${PHPVERSION}-xml"
 	"php${PHPVERSION}-bz2"
 	"php${PHPVERSION}-ldap"
+	"php${PHPVERSION}-sqlite3"
 	"php-soap"
 	"php-pear"
 	"curl"
@@ -406,6 +491,32 @@ for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
 done
 
+# OpenVPN EasyRSA configuration
+/usr/bin/make-cadir /etc/openvpn/easyrsa3
+rm -f /etc/openvpn/easyrsa3/pki/vars
+rm -f /etc/openvpn/easyrsa3/vars
+
+# Install Dahdi card support if --dahdi option is provided
+if [[ "$dahdi" == true ]]; then
+    echo "Installing Dahdi card support..."
+    kernel_version=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+    DAHDIPKGS=("asterisk21-dahdi"
+           "dahdi-firmware"
+           "dahdi-linux"
+           "dahdi-linux-devel"
+           "dahdi-tools"
+           "libpri"
+           "libpri-devel"
+           "wanpipe"
+           "wanpipe-devel"
+           "dahdi-linux-kmod-${kernel_version}"
+           "kmod-wanpipe-${kernel_version}"
+	)
+
+        for i in "${!DAHDIPKGS[@]}"; do
+                pkg_install ${DAHDIPKGS[$i]}
+        done
+fi
 
 # Install mongod
 setCurrentStep "Setting up MongoDB"
@@ -413,16 +524,7 @@ install_mongodb
 
 # Install libfdk
 setCurrentStep "Setting up libfdk"
-if isinstalled libfdk-aac-dev; then
-	log "libfdk-aac2 already present...."
-else
-	wget "http://deb.debian.org/debian/pool/non-free/f/fdk-aac/libfdk-aac-dev_${AACVERSION}_${arch}.deb" -O "/tmp/libfdk-aac-dev_${AACVERSION}_${arch}.deb" >> "$log" 2>&1
-	wget "http://deb.debian.org/debian/pool/non-free/f/fdk-aac/libfdk-aac2_${AACVERSION}_${arch}.deb" -O "/tmp/libfdk-aac2_${AACVERSION}_${arch}.deb" >> "$log" 2>&1
-	dpkg -i /tmp/libfdk-aac2_${AACVERSION}_${arch}.deb >> "$log" 2>&1
-	dpkg -i /tmp/libfdk-aac-dev_${AACVERSION}_${arch}.deb >> "$log" 2>&1
-	rm -f /tmp/libfdk-aac2_${AACVERSION}_${arch}.deb >> "$log" 2>&1
-	rm -f /tmp/libfdk-aac-dev_${AACVERSION}_${arch}.deb >> "$log" 2>&1
-fi
+install_libfdk
 
 setCurrentStep "Removing unnecessary packages"
 apt autoremove -y >> "$log" 2>&1
@@ -587,30 +689,32 @@ if [ $nofpbx ] ; then
 else
 	setCurrentStep "Installing FreePBX 17"
 	pkg_install freepbx17
+
+	# Reinstalling modules to ensure all the modules are enabled/installed
+  setCurrentStep "Installing Sysadmin module"
+  fwconsole ma install sysadmin >> $log 2>&1
+
+  #Not installing sangoma connect result in failure of first installlocal
+  setCurrentStep "Installing sangomaconnectmodule"
+  fwconsole ma install sangomaconnect>> $log 2>&1
+
+  setCurrentStep "Installing install local module"
+  fwconsole ma installlocal >> $log 2>&1
+
+  setCurrentStep "Upgrading FreePBX 17 modules"
+  fwconsole ma upgradeall >> $log 2>&1
+
+  setCurrentStep "reloading and restarting FreePBX 17"
+  fwconsole reload >> $log 2>&1
+  fwconsole restart >> $log 2>&1
 fi
-
-# Reinstalling modules to ensure all the modules are enabled/installed
-setCurrentStep "Installing Sysadmin module"
-fwconsole ma install sysadmin >> $log 2>&1
-
-#Not installing sangoma connect result in failure of first installlocal
-setCurrentStep "Installing sangomaconnectmodule"
-fwconsole ma install sangomaconnect>> $log 2>&1
-
-setCurrentStep "Installing install local module"
-fwconsole ma installlocal >> $log 2>&1
-
-setCurrentStep "Upgrading FreePBX 17 modules"
-fwconsole ma upgradeall >> $log 2>&1
-
-setCurrentStep "reloading and restarting FreePBX 17"
-fwconsole reload >> $log 2>&1
-fwconsole restart >> $log 2>&1
 
 
 setCurrentStep "Wrapping up the installation process"
 systemctl daemon-reload >> "$log" 2>&1
-systemctl enable freepbx >> "$log" 2>&1
+if [ ! $nofpbx ] ; then
+  systemctl enable freepbx >> "$log" 2>&1
+fi
 
 #delete apache2 index.html as we do not need that file
 rm -f /var/www/html/index.html
@@ -625,7 +729,7 @@ rm -f /var/www/html/index.html
 a2enmod rewrite >> "$log" 2>&1
 
 #Enabling freepbx apache configuration
-cd /etc/apache2/sites-enabled/ && ln -s ../sites-available/freepbx.conf freepbx.conf >> "$log" 2>&1
+a2ensite freepbx.conf
 
 #Setting postfix size to 100MB
 /usr/sbin/postconf -e message_size_limit=102400000
@@ -641,10 +745,14 @@ sed -i 's/\(^ServerSignature \).*/\1Off/' /etc/apache2/conf-available/security.c
 systemctl restart apache2 >> "$log" 2>&1
 
 # Refresh signatures
-fwconsole ma refreshsignatures >> "$log" 2>&1
+if [ ! $nofpbx ] ; then
+  fwconsole ma refreshsignatures >> "$log" 2>&1
+fi
 
 #Do not want to upgrade initial(first time setup) packages
-apt-mark hold freepbx17
+if [ ! $nofpbx ] ; then
+	apt-mark hold freepbx17
+fi
 apt-mark hold sangoma-pbx17
 
 setCurrentStep "Installation successful."
@@ -656,4 +764,6 @@ message "Total script Execution Time: $execution_time"
 message "Finished FreePBX 17 installation process for $host $kernel"
 message "Join us on the FreePBX Community Forum: https://community.freepbx.org/ ";
 
-fwconsole motd
+if [ ! $nofpbx ] ; then
+  fwconsole motd
+fi
