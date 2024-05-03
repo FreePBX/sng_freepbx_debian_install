@@ -424,28 +424,17 @@ check_digium_phones_version() {
     fi
 }
 
-check_digium_phones() {
-    license_status=$(asterisk -rx "digium_phones license status" 2>/dev/null)
-    if echo "$license_status" | grep -q "Module is disabled"; then
-        message "You are not using digium_phones licensed Version. Please Upgrade."
-    else
-        message "License status: $license_status"
-    fi
-
-    if asterisk -rx "module show" | grep -q "res_digium_phone.so"; then
-        check_digium_phones_version
-    else
-        message "Digium Phones module is not loaded. Please make sure it is installed and loaded correctly."
-    fi
-}
-
 check_asterisk() {
     if ! dpkg -l | grep -q 'asterisk'; then
         message "Asterisk is not installed. Please install Asterisk to proceed."
     else
         check_asterisk_version=$(asterisk -V)
         message "$check_asterisk_version"
-        check_digium_phones
+	if asterisk -rx "module show" | grep -q "res_digium_phone.so"; then
+            check_digium_phones_version
+        else
+            message "Digium Phones module is not loaded. Please make sure it is installed and loaded correctly."
+        fi
     fi
 }
 
