@@ -612,6 +612,7 @@ DEPPKGS=("redis-server"
 	"lsb-release"
 	"ca-certificates"
  	"cron"
+ 	"python3-mysqldb"
 )
 for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
