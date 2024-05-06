@@ -613,6 +613,7 @@ DEPPKGS=("redis-server"
 	"ca-certificates"
  	"cron"
  	"python3-mysqldb"
+ 	"default-libmysqlclient-dev"
 )
 for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
