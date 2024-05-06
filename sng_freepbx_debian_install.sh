@@ -23,7 +23,7 @@
 #####################################################################################
 export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 set -e
-SCRIPTVER="1.2"
+SCRIPTVER="1.3"
 ASTVERSION=21
 AACVERSION="2.0.1-1"
 PHPVERSION="8.2"
@@ -552,7 +552,9 @@ DEPPKGS=("redis-server"
 	"php${PHPVERSION}-bz2"
 	"php${PHPVERSION}-ldap"
 	"php${PHPVERSION}-sqlite3"
+	"php${PHPVERSION}-bcmath"
 	"php-soap"
+	"php-bcmath"
 	"php-pear"
 	"curl"
 	"sox"
