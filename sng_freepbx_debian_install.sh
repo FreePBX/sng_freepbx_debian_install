@@ -299,8 +299,7 @@ setup_repositories() {
 	fi
 
 	wget -qO - https://pgp.mongodb.com/server-7.0.asc | gpg  --dearmor --yes -o /etc/apt/trusted.gpg.d/mongodb-server-7.0.gpg >> "$log" 2>&1
-	add-apt-repository -y -S "deb [ arch=${arch} ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" >> "$log" 2>&1
-
+      add-apt-repository -y -S "deb [ arch=${arch} ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" >> "$log" 2>&1
       add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free" >> "$log" 2>&1
 
 	setCurrentStep "Setting up Sangoma repository"
