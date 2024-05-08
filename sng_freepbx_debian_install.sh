@@ -473,6 +473,7 @@ setCurrentStep "Making sure installation is same"
 # Fixing broken install
 apt -y --fix-broken install >> $log 2>&1
 apt autoremove -y >> "$log" 2>&1
+apt update >> $log 2>&1
 
 # Adding iptables and postfix  inputs so "iptables-persistent" and postfix will not ask for the input
 setCurrentStep "Setting up default configuration"
