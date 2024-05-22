@@ -633,17 +633,6 @@ EOF
 echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
-warning_message="# WARNING: Changing the inet_interfaces to an IP other than 127.0.0.1 may expose Postfix to external network connections.\n# Only modify this setting if you understand the implications and have specific network requirements."
-
-if ! grep -q "WARNING: Changing the inet_interfaces" /etc/postfix/main.cf; then
-    # Add the warning message above the inet_interfaces configuration
-    sed -i "/^inet_interfaces\s*=/i $warning_message" /etc/postfix/main.cf
-fi
-
-sed -i "s/^inet_interfaces\s*=.*/inet_interfaces = 127.0.0.1/" /etc/postfix/main.cf
-
-systemctl restart postfix
-
 # Install below packages which is required to add the repository
 pkg_install software-properties-common
 pkg_install gnupg
@@ -780,6 +769,19 @@ DEPPKGS=("redis-server"
 for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
 done
+
+if  dpkg -l | grep -q 'postfix'; then
+    warning_message="# WARNING: Changing the inet_interfaces to an IP other than 127.0.0.1 may expose Postfix to external network connections.\n# Only modify this setting if you understand the implications and have specific network requirements."
+
+    if ! grep -q "WARNING: Changing the inet_interfaces" /etc/postfix/main.cf; then
+        # Add the warning message above the inet_interfaces configuration
+        sed -i "/^inet_interfaces\s*=/i $warning_message" /etc/postfix/main.cf
+    fi
+
+    sed -i "s/^inet_interfaces\s*=.*/inet_interfaces = 127.0.0.1/" /etc/postfix/main.cf
+
+    systemctl restart postfix
+fi
 
 # OpenVPN EasyRSA configuration
 if [ ! -d "/etc/openvpn/easyrsa3" ]; then
