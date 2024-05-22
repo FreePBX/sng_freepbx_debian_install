@@ -437,6 +437,19 @@ check_asterisk() {
     fi
 }
 
+hold_packages() {
+    if [ ! $nofpbx ] ; then
+      apt-mark hold freepbx17
+    fi
+    # List of package names to hold
+    local packages=("sangoma-pbx17" "nodejs" "node-*")
+
+    # Loop through each package and hold it
+    for pkg in "${packages[@]}"; do
+        sudo apt-mark hold "$pkg"
+    done
+}
+
 ################################################################################################################
 MIRROR_PRIO=600
 kernel=`uname -a`
@@ -879,11 +892,9 @@ if [ ! $nofpbx ] ; then
   fwconsole ma refreshsignatures >> "$log" 2>&1
 fi
 
-#Do not want to upgrade initial(first time setup) packages
-if [ ! $nofpbx ] ; then
-	apt-mark hold freepbx17
-fi
-apt-mark hold sangoma-pbx17
+setCurrentStep "Holding Packages"
+
+hold_packages
 
 setCurrentStep "Installation successful."
 
