@@ -312,6 +312,142 @@ Pin-Priority: ${MIRROR_PRIO}
 EOF
 }
 
+create_kernel_script() {
+    echo "$1" >> /usr/bin/kernel-check
+}
+
+
+check_kernel_compatibility() {
+    local latest_dahdi_supported_version=$(apt-cache search dahdi | grep -E "^dahdi-linux-kmod-[0-9]" | awk '{print $1}' | awk -F'-' '{print $4"-"$5}' | sort -n | tail -1)
+    local latest_wanpipe_supported_version=$(apt-cache search wanpipe | grep -E "^kmod-wanpipe-[0-9]" | awk '{print $1}' | awk -F'-' '{print $3"-"$4}' | sort -n | tail -1)
+    local curr_kernel_version=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+
+    if dpkg --compare-versions "$latest_dahdi_supported_version" "eq" "$latest_wanpipe_supported_version"; then
+        local supported_kernel_version=$latest_dahdi_supported_version
+    else
+        local supported_kernel_version="6.1.0.21"
+    fi
+
+    if dpkg --compare-versions "$curr_kernel_version" "gt" "$supported_kernel_version"; then
+        message "Aborting freepbx installation as detected kernel version $curr_kernel_version is not supported by freepbx dahdi module $supported_kernel_version"
+	exit
+    fi
+
+    if [ -e "/usr/bin/kernel-check" ]; then
+        rm -rf /usr/bin/kernel-check
+    fi
+
+    if [ $testrepo ]; then
+        message "Skipping Kernel Check. As Kernel Check is not required for testing repo....."
+        return
+    fi
+
+    message "Creating kernel check script to allow proper kernel upgrades"
+    create_kernel_script "#!/bin/bash"
+    create_kernel_script ""
+    create_kernel_script "curr_kernel_version=\"\""
+    create_kernel_script "supported_kernel_version=\"\""
+    create_kernel_script ""
+
+    create_kernel_script "set_supported_kernel_version() {"
+    create_kernel_script "    local latest_dahdi_supported_version=\$(apt-cache search dahdi | grep -E \"^dahdi-linux-kmod-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$4,-\$5}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
+    create_kernel_script "    local latest_wanpipe_supported_version=\$(apt-cache search wanpipe | grep -E \"^kmod-wanpipe-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
+    create_kernel_script "    curr_kernel_version=\`apt-cache show linux-headers-\$(uname -r) | sed -n -e 's/Package: linux-headers-\([[:digit:].-]*\).*/\1/' -e 's/-$//p' | uniq\`"
+    create_kernel_script ""
+    create_kernel_script "    if dpkg --compare-versions \"\$latest_dahdi_supported_version\" \"eq\" \"\$latest_wanpipe_supported_version\"; then"
+    create_kernel_script "        supported_kernel_version=\$latest_dahdi_supported_version"
+    create_kernel_script "    else"
+    create_kernel_script "        supported_kernel_version=\"6.1.0-21\""
+    create_kernel_script "    fi"
+    create_kernel_script "}"
+    create_kernel_script ""
+
+    create_kernel_script "check_and_unblock_kernel() {"
+    create_kernel_script "    local kernel_packages=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}')"
+    create_kernel_script ""
+    create_kernel_script "    if [[ \"w\$1\" != \"w\" ]]; then"
+    create_kernel_script "        # Compare the version with the current supported kernel version"
+    create_kernel_script "        if dpkg --compare-versions \"\$1\" \"le\" \"\$supported_kernel_version\"; then"
+    create_kernel_script "            local is_on_hold=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}' | grep -w \"\$1\" | wc -l )"
+    create_kernel_script ""
+    create_kernel_script "            if [[ \$is_on_hold -gt 0 ]]; then"
+    create_kernel_script "                logger \"Un-Holding kernel version \$version to allow automatic updates.\""
+    create_kernel_script "                apt-mark unhold \"\$version\" >> /dev/null 2>&1"
+    create_kernel_script "            fi"
+    create_kernel_script "        fi"
+    create_kernel_script "        return"
+    create_kernel_script "    fi"
+    create_kernel_script ""
+    create_kernel_script "    for package in \$kernel_packages; do"
+    create_kernel_script "        # Extract the version from the package name"
+    create_kernel_script "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
+    create_kernel_script ""
+    create_kernel_script "        # Compare the version with the current supported kernel version"
+    create_kernel_script "        if dpkg --compare-versions \"\$version\" \"le\" \"\$supported_kernel_version\"; then"
+    create_kernel_script "            logger \"Un-Holding kernel version \$version to allow automatic updates.\""
+    create_kernel_script "            apt-mark unhold \"\$version\" >> /dev/null 2>&1"
+    create_kernel_script "        fi"
+    create_kernel_script "    done"
+    create_kernel_script "}"
+
+    create_kernel_script ""
+    create_kernel_script "check_and_block_kernel() {"
+    create_kernel_script "    if dpkg --compare-versions \"\$curr_kernel_version\" \"gt\" \"\$supported_kernel_version\"; then"
+    create_kernel_script "        logger \"Aborting as detected kernel version is not supported by freepbx dahdi module\""
+    create_kernel_script "    fi"
+    create_kernel_script ""
+
+    create_kernel_script "    local kernel_packages=\$( apt-cache search linux-image | grep -E "^linux-image-[0-9]" | awk '{print \$1}')"
+    create_kernel_script "    for package in \$kernel_packages; do"
+    create_kernel_script "        # Extract the version from the package name"
+    create_kernel_script "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
+    create_kernel_script ""
+
+    create_kernel_script "        # Compare the version with the current supported kernel version"
+    create_kernel_script "        if dpkg --compare-versions \"\$version\" \"gt\" \"\$supported_kernel_version\"; then"
+    create_kernel_script "            logger \"Holding kernel version \$version to prevent automatic updates.\""
+    create_kernel_script "            apt-mark hold \"\$version\" >> /dev/null 2>&1"
+    create_kernel_script "        else"
+    create_kernel_script "            check_and_unblock_kernel \$version"
+    create_kernel_script "        fi"
+    create_kernel_script "    done"
+    create_kernel_script "}"
+
+    create_kernel_script ""
+    create_kernel_script "case \$1 in"
+    create_kernel_script "    --hold)"
+    create_kernel_script "        hold=true"
+    create_kernel_script "        ;;"
+    create_kernel_script ""
+    create_kernel_script "    --unhold)"
+    create_kernel_script "        unhold=true"
+    create_kernel_script "        ;;"
+    create_kernel_script ""
+    create_kernel_script "    *)"
+    create_kernel_script "        logger \"Unknown / Invalid option \$1\""
+    create_kernel_script "        exit 1"
+    create_kernel_script "        ;;"
+    create_kernel_script "esac"
+    create_kernel_script ""
+    create_kernel_script "set_supported_kernel_version"
+    create_kernel_script ""
+    create_kernel_script "if [[ \$hold ]]; then"
+    create_kernel_script "    check_and_block_kernel"
+    create_kernel_script "elif [[ \$unhold ]]; then"
+    create_kernel_script "    check_and_unblock_kernel"
+    create_kernel_script "fi"
+
+    #Changing file permission to run script
+    chmod 755 /usr/bin/kernel-check
+
+    #Adding Post Invoke for Update to run kernel-check
+    if [ -e "/etc/apt/apt.conf.d/05checkkernel" ]; then
+        rm -rf /etc/apt/apt.conf.d/05checkkernel
+    fi
+    echo "APT::Update::Post-Invoke {\"/usr/bin/kernel-check --hold\"}" >> /etc/apt/apt.conf.d/05checkkernel
+    chmod 644 /etc/apt/apt.conf.d/05checkkernel
+}
+
 check_services() {
     services=("fail2ban" "iptables")
     for service in "${services[@]}"; do
@@ -497,6 +633,17 @@ EOF
 echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
+warning_message="# WARNING: Changing the inet_interfaces to an IP other than 127.0.0.1 may expose Postfix to external network connections.\n# Only modify this setting if you understand the implications and have specific network requirements."
+
+if ! grep -q "WARNING: Changing the inet_interfaces" /etc/postfix/main.cf; then
+    # Add the warning message above the inet_interfaces configuration
+    sed -i "/^inet_interfaces\s*=/i $warning_message" /etc/postfix/main.cf
+fi
+
+sed -i "s/^inet_interfaces\s*=.*/inet_interfaces = 127.0.0.1/" /etc/postfix/main.cf
+
+systemctl restart postfix
+
 # Install below packages which is required to add the repository
 pkg_install software-properties-common
 pkg_install gnupg
@@ -504,13 +651,16 @@ pkg_install gnupg
 setCurrentStep "Setting up repositories"
 setup_repositories
 
+if [ $dahdi ]; then
+    setCurrentStep "Making sure we allow only proper kernel upgrade and version installtion"
+    check_kernel_compatibility
+fi
+
 setCurrentStep "Updating repository"
 apt update >> $log 2>&1
 
 # log the apt-cache policy
 apt-cache policy  >> $log 2>&1
-
-
 
 # Install dependent packages
 setCurrentStep "Installing required packages"
@@ -891,6 +1041,7 @@ systemctl restart apache2 >> "$log" 2>&1
 if [ ! $nofpbx ] ; then
   fwconsole ma refreshsignatures >> "$log" 2>&1
 fi
+
 
 setCurrentStep "Holding Packages"
 
