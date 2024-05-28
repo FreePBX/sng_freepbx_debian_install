@@ -629,6 +629,14 @@ setCurrentStep "Making sure installation is same"
 # Fixing broken install
 apt -y --fix-broken install >> $log 2>&1
 apt autoremove -y >> "$log" 2>&1
+
+# Check if the CD-ROM repository is present in the sources.list file
+if grep -q "^deb cdrom" /etc/apt/sources.list; then
+  # Comment out the CD-ROM repository line in the sources.list file
+  sed -i '/^deb cdrom/s/^/#/' /etc/apt/sources.list
+  message "Commented out CD-ROM repository in sources.list"
+fi
+
 apt update >> $log 2>&1
 
 # Adding iptables and postfix  inputs so "iptables-persistent" and postfix will not ask for the input
