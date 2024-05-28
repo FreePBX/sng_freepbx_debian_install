@@ -119,6 +119,13 @@ while [[ $# -gt 0 ]]; do
                         dahdi=true
                         shift # past argument
                         ;;
+	        --dahdi-only)
+                        nofpbx=true
+                        noast=true
+                        noioncube=true
+                        dahdi=true
+                        shift # past argument
+                        ;;
 		-*|--*)
 			echo "Unknown option $1"
 			exit 1
