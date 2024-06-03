@@ -883,19 +883,8 @@ CipherString = DEFAULT:@SECLEVEL=1
 EOF
 fi
 
-#Disabling ipv6 to avoid localhost to resolving to ipv6 address (which could break nodeJs)
-isIPv6Disabled=$(grep "FreePBX 17 changes" /etc/sysctl.conf |wc -l)
-if [ "0" = "${isIPv6Disabled}" ]; then
-	cat <<EOF >> /etc/sysctl.conf
-# FreePBX 17 changes - begin
-net.ipv6.conf.all.disable_ipv6 = 1
-net.ipv6.conf.default.disable_ipv6 = 1
-net.ipv6.conf.lo.disable_ipv6 = 1
-# FreePBX 17 changes - end
-EOF
-	/usr/sbin/sysctl -p >> $log 2>&1
-fi
-
+#Setting higher precedence value to IPv4
+sed -i 's/^#\s*precedence ::ffff:0:0\/96  100/precedence ::ffff:0:0\/96  100/' /etc/gai.conf
 
 # Setting screen configuration
 isScreenRcAdapted=$(grep "FreePBX 17 changes" /root/.screenrc |wc -l)
