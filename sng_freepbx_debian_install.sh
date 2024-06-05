@@ -782,6 +782,7 @@ DEPPKGS=("redis-server"
  	"cron"
  	"python3-mysqldb"
  	"default-libmysqlclient-dev"
+ 	"at"
 )
 for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
