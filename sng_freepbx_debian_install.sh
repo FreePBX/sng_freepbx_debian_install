@@ -1057,9 +1057,12 @@ setCurrentStep "Holding Packages"
 
 hold_packages
 
+#setting permisions
+chown -R asterisk:asterisk /var/www/html/
+
 setCurrentStep "Installation successful."
 
-############ TODO - POST INSTALL VALIDATION ############################################
+############ POST INSTALL VALIDATION ############################################
 # Commands for post-installation validation
 # Disable automatic script termination upon encountering non-zero exit code to prevent premature termination.
 set +e
