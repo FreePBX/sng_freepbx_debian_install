@@ -1059,6 +1059,12 @@ setCurrentStep "Holding Packages"
 
 hold_packages
 
+# Update logrotate configuration
+if grep -q '^#dateext' /etc/logrotate.conf; then
+   message "Setting up logrotate.conf"
+   sed -i 's/^#dateext/dateext/' /etc/logrotate.conf
+fi
+
 #setting permisions
 chown -R asterisk:asterisk /var/www/html/
 
