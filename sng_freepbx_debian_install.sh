@@ -935,6 +935,12 @@ EOF
 fi
 
 
+# Setting apt configuration to always DO NOT overwrite existing configurations
+cat <<EOF >> /etc/apt/apt.conf.d/00freepbx
+DPkg::options { "--force-confdef"; "--force-confold"; }
+EOF
+
+
 #chown -R asterisk:asterisk /etc/ssl
 
 # Install Asterisk
