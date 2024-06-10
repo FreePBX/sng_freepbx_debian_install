@@ -22,7 +22,7 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 if ! grep -Fxq 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' /root/.bashrc; then
-  echo 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' | sudo tee -a /root/.bashrc > /dev/null
+  echo 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' >> /root/.bashrc
   export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 fi
 set -e
@@ -592,7 +592,7 @@ hold_packages() {
 
     # Loop through each package and hold it
     for pkg in "${packages[@]}"; do
-        sudo apt-mark hold "$pkg"
+        apt-mark hold "$pkg"
     done
 }
 
