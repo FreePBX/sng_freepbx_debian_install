@@ -865,6 +865,7 @@ fi
 
 # Creating /tftpboot directory
 mkdir -p /tftpboot
+chown -R asterisk:asterisk /tftpboot
 # Creating asterisk sound directory
 mkdir -p /var/lib/asterisk/sounds
 chown -R asterisk:asterisk /var/lib/asterisk
