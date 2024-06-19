@@ -326,6 +326,72 @@ create_kernel_script() {
     echo "$1" >> /usr/bin/kernel-check
 }
 
+#create post apt run script to run and check everything apt command is finished executing
+create_post_apt_script() {
+    #checking post-apt-run script
+    if [ -e "/usr/bin/post-apt-run" ]; then
+        rm -rf /usr/bin/post-apt-run
+    fi
+
+    message "Creating script to run post every apt command is finished executing"
+
+    echo "#!/bin/bash" >> /usr/bin/post-apt-run
+    echo "" >> /usr/bin/post-apt-run
+    echo "kernel_idx=\$(grep GRUB_DEFAULT /etc/default/grub | cut -d '=' -f 2)" >> /usr/bin/post-apt-run
+    echo "kernel_pres=\$(grep -A 15 '^menuentry' /boot/grub/grub.cfg  | grep -o -P 'vmlinuz-\S+')" >> /usr/bin/post-apt-run
+    echo "" >> /usr/bin/post-apt-run
+    echo "dahdi_pres=\$(dpkg -l | grep dahdi-linux | wc -l)" >> /usr/bin/post-apt-run
+    echo "" >> /usr/bin/post-apt-run
+    echo "if [[ \$dahdi_pres -gt 0 ]]; then" >> /usr/bin/post-apt-run
+    echo "    idx=0" >> /usr/bin/post-apt-run
+    echo "    for kernel in \$kernel_pres; do" >> /usr/bin/post-apt-run
+    echo "        if [[ \$idx -ne \$kernel_idx ]]; then" >> /usr/bin/post-apt-run
+    echo "            idx=\$((idx+1))" >> /usr/bin/post-apt-run
+    echo "            continue" >> /usr/bin/post-apt-run
+    echo "        fi" >> /usr/bin/post-apt-run
+    echo "" >> /usr/bin/post-apt-run
+    echo "        kernel_ver=\$(echo \$kernel | sed -n -e 's/vmlinuz-\([[:digit:].-]*\).*/\\1/' -e 's/-$//p')" >> /usr/bin/post-apt-run
+    echo "        logger \"Checking kernel modules for dahdi and wanpipe for kernel image \$kernel_ver\"" >> /usr/bin/post-apt-run
+    echo "" >> /usr/bin/post-apt-run
+    echo "        #check if dahdi is installed or not of respective kernel version" >> /usr/bin/post-apt-run
+    echo "        dahdi_kmod_pres=\$(dpkg -l | grep dahdi-linux-kmod | grep \$kernel_ver | wc -l)" >> /usr/bin/post-apt-run
+    echo "        wanpipe_kmod_pres=\$(dpkg -l | grep kmod-wanpipe | grep \$kernel_ver | wc -l)" >> /usr/bin/post-apt-run
+    echo "" >> /usr/bin/post-apt-run
+    echo "        if [[ \$dahdi_kmod_pres -eq 0 ]] && [[ \$wanpipe_kmod_pres -eq 0 ]]; then" >> /usr/bin/post-apt-run
+    echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver and kmod-wanpipe-\$kernel_ver\"" >> /usr/bin/post-apt-run
+    echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
+    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver | at now +1 minute&" >> /usr/bin/post-apt-run
+    echo "        elif [[ \$dahdi_kmod_pres -eq 0 ]]; then" >> /usr/bin/post-apt-run
+    echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver\"" >> /usr/bin/post-apt-run
+    echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
+    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver | at now +1 minute&" >> /usr/bin/post-apt-run
+    echo "        elif [[ \$wanpipe_kmod_pres -eq 0 ]];then" >> /usr/bin/post-apt-run
+    echo "            logger \"Upgrading kmod-wanpipe-\$kernel_ver\"" >> /usr/bin/post-apt-run
+    echo "            echo \"Please wait for approx 2 min once apt command execution is completed as kmod-wanpipe-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
+    echo "            apt -y upgrade kmod-wanpipe-\$kernel_ver | at now +1 minute&" >> /usr/bin/post-apt-run
+    echo "        fi" >> /usr/bin/post-apt-run
+    echo "" >> /usr/bin/post-apt-run
+    echo "        break" >> /usr/bin/post-apt-run
+    echo "    done" >> /usr/bin/post-apt-run
+    echo "else" >> /usr/bin/post-apt-run
+    echo "    logger \"Dahdi / wanpipe is not present therefore, not checking for dahdi / wanpipe kmod upgrade\"" >> /usr/bin/post-apt-run
+    echo "fi" >> /usr/bin/post-apt-run
+    echo "" >> /usr/bin/post-apt-run
+    echo "if [ -e "/var/www/html/index.html" ]; then" >> /usr/bin/post-apt-run
+    echo "    rm -rf /var/www/html/index.html" >> /usr/bin/post-apt-run
+    echo "fi" >> /usr/bin/post-apt-run
+
+    #Changing file permission to run script
+    chmod 755 /usr/bin/post-apt-run
+
+    #Adding Post Invoke for Update to run kernel-check
+    if [ -e "/etc/apt/apt.conf.d/80postaptcmd" ]; then
+        rm -rf /etc/apt/apt.conf.d/80postaptcmd
+    fi
+
+    echo "DPkg::Post-Invoke {\"/usr/bin/post-apt-run\";};" >> /etc/apt/apt.conf.d/80postaptcmd
+    chmod 644 /etc/apt/apt.conf.d/80postaptcmd
+}
 
 check_kernel_compatibility() {
     local latest_dahdi_supported_version=$(apt-cache search dahdi | grep -E "^dahdi-linux-kmod-[0-9]" | awk '{print $1}' | awk -F'-' '{print $4"-"$5}' | sort -n | tail -1)
@@ -1074,6 +1140,9 @@ fi
 
 #setting permisions
 chown -R asterisk:asterisk /var/www/html/
+
+#Creating post apt scripts
+create_post_apt_script
 
 setCurrentStep "Installation successful."
 
