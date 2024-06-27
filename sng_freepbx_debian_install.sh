@@ -26,6 +26,14 @@ if ! grep -Fxq 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/
   export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 fi
 set -e
+if ! dpkg -l | grep -q lsb-release >> /dev/null 2>&1 ; then
+    echo "lsb-release package not found, installing lsb-release package"
+    apt install -y lsb-release
+fi
+if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
+    echo "wget package not found, installing wget package"
+    apt install -y wget
+fi
 SCRIPTVER="1.3"
 ASTVERSION=21
 AACVERSION="2.0.1-1"
