@@ -27,14 +27,12 @@ if ! grep -Fxq 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/
 fi
 set -e
 if ! dpkg -l | grep -q lsb-release >> /dev/null 2>&1 ; then
-    echo "lsb-release package not found, installing lsb-release package"
-    apt install -y lsb-release
+    apt install -y lsb-release >> /dev/null 2>&1
 fi
 if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
-    echo "wget package not found, installing wget package"
-    apt install -y wget
+    apt install -y wget >> /dev/null 2>&1
 fi
-SCRIPTVER="1.3"
+SCRIPTVER="1.4"
 ASTVERSION=21
 AACVERSION="2.0.1-1"
 PHPVERSION="8.2"
@@ -131,6 +129,7 @@ while [[ $# -gt 0 ]]; do
                         shift # past argument
                         ;;
 	        --dahdi-only)
+			skipversion=true
                         nofpbx=true
                         noast=true
                         noioncube=true
