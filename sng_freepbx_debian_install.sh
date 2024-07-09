@@ -408,7 +408,7 @@ check_kernel_compatibility() {
     if dpkg --compare-versions "$latest_dahdi_supported_version" "eq" "$latest_wanpipe_supported_version"; then
         local supported_kernel_version=$latest_dahdi_supported_version
     else
-        local supported_kernel_version="6.1.0.21"
+        local supported_kernel_version="6.1.0.22"
     fi
 
     if dpkg --compare-versions "$curr_kernel_version" "gt" "$supported_kernel_version"; then
@@ -730,6 +730,15 @@ pkg_install gnupg
 
 setCurrentStep "Setting up repositories"
 setup_repositories
+
+lat_dahdi_supp_ver=$(apt-cache search dahdi | grep -E "^dahdi-linux-kmod-[0-9]" | awk '{print $1}' | awk -F'-' '{print $4"-"$5}' | sort -n | tail -1)
+curr_ker_ver=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+
+message " You are installing FreePBX 17 on kernel $curr_ker_ver.."
+message " Please note that if you have plan to use DAHDI then:"
+message " Ensure that you either choose DAHDI option so script will configure DAHDI"
+message "                                  OR"
+message " Ensure you are always running DAHDI supported Kernel. Current DAHDI supporter latest kernel version is $lat_dahdi_supp_ver"
 
 if [ $dahdi ]; then
     setCurrentStep "Making sure we allow only proper kernel upgrade and version installtion"
@@ -1126,6 +1135,18 @@ sed -i 's/\(^expose_php = \).*/\1Off/' /etc/php/${PHPVERSION}/apache2/php.ini
 # Disable ServerTokens and ServerSignature for provide less information to attacker
 sed -i 's/\(^ServerTokens \).*/\1Prod/' /etc/apache2/conf-available/security.conf
 sed -i 's/\(^ServerSignature \).*/\1Off/' /etc/apache2/conf-available/security.conf
+
+# Make sure that the apache service start after freepbx service is started
+if [ -e "/lib/systemd/system/apache2.service" ]; then
+    if [ -e "/lib/systemd/system/freepbx.service" ]; then
+        is_fpbx_pres=$(grep -nr "freepbx.service" /lib/systemd/system/apache2.service | wc -l)
+
+        if [ $is_fpbx_pres -eq 0 ]; then
+            sed -i '/After=/s/$/ freepbx.service/' /lib/systemd/system/apache2.service
+        fi
+    fi
+fi
+
 
 # Restart apache2
 systemctl restart apache2 >> "$log" 2>&1
