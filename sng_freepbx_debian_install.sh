@@ -345,7 +345,7 @@ create_post_apt_script() {
     echo "#!/bin/bash" >> /usr/bin/post-apt-run
     echo "" >> /usr/bin/post-apt-run
     echo "kernel_idx=\$(grep GRUB_DEFAULT /etc/default/grub | cut -d '=' -f 2)" >> /usr/bin/post-apt-run
-    echo "kernel_pres=\$(grep -A 15 '^menuentry' /boot/grub/grub.cfg  | grep -o -P 'vmlinuz-\S+')" >> /usr/bin/post-apt-run
+    echo "kernel_pres=\$(sed -n '/^menuentry/,/}/p' /boot/grub/grub.cfg  | grep -o -P 'vmlinuz-\S+')" >> /usr/bin/post-apt-run
     echo "" >> /usr/bin/post-apt-run
     echo "dahdi_pres=\$(dpkg -l | grep dahdi-linux | wc -l)" >> /usr/bin/post-apt-run
     echo "" >> /usr/bin/post-apt-run
