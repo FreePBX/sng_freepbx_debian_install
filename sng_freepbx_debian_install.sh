@@ -367,15 +367,15 @@ create_post_apt_script() {
     echo "        if [[ \$dahdi_kmod_pres -eq 0 ]] && [[ \$wanpipe_kmod_pres -eq 0 ]]; then" >> /usr/bin/post-apt-run
     echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver and kmod-wanpipe-\$kernel_ver\"" >> /usr/bin/post-apt-run
     echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
-    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver | at now +1 minute&" >> /usr/bin/post-apt-run
+    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&" >> /usr/bin/post-apt-run
     echo "        elif [[ \$dahdi_kmod_pres -eq 0 ]]; then" >> /usr/bin/post-apt-run
     echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver\"" >> /usr/bin/post-apt-run
     echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
-    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver | at now +1 minute&" >> /usr/bin/post-apt-run
+    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&" >> /usr/bin/post-apt-run
     echo "        elif [[ \$wanpipe_kmod_pres -eq 0 ]];then" >> /usr/bin/post-apt-run
     echo "            logger \"Upgrading kmod-wanpipe-\$kernel_ver\"" >> /usr/bin/post-apt-run
     echo "            echo \"Please wait for approx 2 min once apt command execution is completed as kmod-wanpipe-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
-    echo "            apt -y upgrade kmod-wanpipe-\$kernel_ver | at now +1 minute&" >> /usr/bin/post-apt-run
+    echo "            apt -y upgrade kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&" >> /usr/bin/post-apt-run
     echo "        fi" >> /usr/bin/post-apt-run
     echo "" >> /usr/bin/post-apt-run
     echo "        break" >> /usr/bin/post-apt-run
