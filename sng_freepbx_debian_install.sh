@@ -1090,6 +1090,11 @@ else
   setCurrentStep "Installing sangomaconnectmodule"
   fwconsole ma install sangomaconnect>> $log 2>&1
 
+
+  if [ $dahdi ]; then
+	fwconsole ma downloadinstall dahdiconfig
+  fi
+
   setCurrentStep "Installing install local module"
   fwconsole ma installlocal >> $log 2>&1
 
