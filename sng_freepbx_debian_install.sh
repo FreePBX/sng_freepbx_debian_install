@@ -32,7 +32,7 @@ fi
 if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
     apt install -y wget >> /dev/null 2>&1
 fi
-SCRIPTVER="1.4"
+SCRIPTVER="1.5"
 ASTVERSION=21
 AACVERSION="2.0.1-1"
 PHPVERSION="8.2"
