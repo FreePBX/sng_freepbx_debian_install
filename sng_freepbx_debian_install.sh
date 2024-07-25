@@ -1093,6 +1093,7 @@ else
 
   if [ $dahdi ]; then
 	fwconsole ma downloadinstall dahdiconfig
+        export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel
   fi
 
   setCurrentStep "Installing install local module"
