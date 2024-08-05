@@ -531,6 +531,10 @@ check_kernel_compatibility() {
     chmod 644 /etc/apt/apt.conf.d/05checkkernel
 }
 
+refresh_signatures() {
+  fwconsole ma refreshsignatures >> "$log" 2>&1
+}
+
 check_services() {
     services=("fail2ban" "iptables")
     for service in "${services[@]}"; do
@@ -1157,10 +1161,23 @@ fi
 systemctl restart apache2 >> "$log" 2>&1
 
 # Refresh signatures
-if [ ! $nofpbx ] ; then
-  fwconsole ma refreshsignatures >> "$log" 2>&1
+count=1
+if [ ! $nofpbx ]; then
+  while [ $count -eq 1 ]; do
+    set +e
+    refresh_signatures
+    exit_status=$?
+    set -e
+    if [ $exit_status -eq 0 ]; then
+      break
+    else
+      log "Command 'fwconsole ma refreshsignatures' failed to execute with exit status $exit_status, running as a background job"
+      refresh_signatures &
+      log "Continuing the remaining script execution"
+      break
+    fi
+  done
 fi
-
 
 setCurrentStep "Holding Packages"
 
