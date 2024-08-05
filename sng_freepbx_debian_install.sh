@@ -308,11 +308,11 @@ setup_repositories() {
 
 	# Setting our default repo server
 	if [ $testrepo ] ; then
-		add-apt-repository -y -S "deb [ arch=${arch} ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
-		add-apt-repository -y -S "deb [ arch=${arch} ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
 	else
-		add-apt-repository -y -S "deb [ arch=${arch} ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
-		add-apt-repository -y -S "deb [ arch=${arch} ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
 	fi
 
 	wget -qO - https://pgp.mongodb.com/server-7.0.asc | gpg  --dearmor --yes -o /etc/apt/trusted.gpg.d/mongodb-server-7.0.gpg >> "$log" 2>&1
