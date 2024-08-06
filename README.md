@@ -37,8 +37,14 @@ Please file bug reports at https://github.com/FreePBX/issue-tracker/issues
 
 Steps -
 1) ssh to the debian system as 'root' user
-2) wget https://github.com/FreePBX/sng_freepbx_debian_install/raw/master/sng_freepbx_debian_install.sh -O /tmp/sng_freepbx_debian_install.sh
-2) bash /tmp/sng_freepbx_debian_install.sh
+2) Download tge file using `wget` 
+```bash
+wget https://github.com/FreePBX/sng_freepbx_debian_install/raw/master/sng_freepbx_debian_install.sh -O /tmp/sng_freepbx_debian_install.sh
+```
+2) Execute the script 
+```bash
+bash /tmp/sng_freepbx_debian_install.sh
+```
 
 The script will install the necessary dependencies for FreePBX, followed by the FreePBX software itself. 
 
