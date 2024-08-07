@@ -564,6 +564,16 @@ check_php_version() {
     else
         message "Installed PHP version  $php_version is not compatible with FreePBX. Please install PHP version '8.2.x'"
     fi
+
+    # Checking whether enabled PHP modules are of PHP 8.2 version
+    php_module_version=$(a2query -m | grep php | awk '{print $1}')
+
+    if [[ "$php_module_version" == "php8.2" ]]; then
+       log "The PHP module version $php_module_version is compatible with FreePBX. Proceeding with the script."
+    else
+       log "The installed PHP module version $php_module_version is not compatible with FreePBX. Please install PHP version '8.2'."
+       exit 1
+    fi
 }
 
 verify_module_status() {
