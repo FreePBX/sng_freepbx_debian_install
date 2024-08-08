@@ -678,7 +678,15 @@ MIRROR_PRIO=600
 kernel=`uname -a`
 arch=`dpkg --print-architecture`
 host=`hostname`
-fqdn="$(hostname -f)"
+fqdn="$(hostname -f)" || true
+
+# Check if hostname command succeeded and FQDN is not empty
+if [ -z "$fqdn" ]; then
+    echo "Fully qualified domain name (FQDN) is not set correctly."
+    echo "Please set the FQDN for this system and re-run the script."
+    echo "To set the FQDN, update the /etc/hostname and /etc/hosts files."
+    exit 1
+fi
 
 #Ensure the script is not running
 pid="$$"
