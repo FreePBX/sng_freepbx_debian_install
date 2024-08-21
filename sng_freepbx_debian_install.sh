@@ -116,10 +116,15 @@ while [[ $# -gt 0 ]]; do
 			noast=true
 			shift # past argument
 			;;
+		--opensourceonly)
+			opensourceonly=true
+			shift # past argument
+			;;
 		--noioncube)
 			noioncube=true
 			shift # past argument
 			;;
+
                 --skipversion)
                         skipversion=true
                         shift # past argument
@@ -510,6 +515,14 @@ check_kernel_compatibility() {
     chmod 644 /etc/apt/apt.conf.d/05checkkernel
 }
 
+remove_commercial_modules() {
+  fwconsole ma list | grep Commercial | awk '{print $2}'  | xargs -I {} fwconsole ma -f uninstall {} >> "$log" 2>&1
+  fwconsole ma list | grep Commercial | awk '{print $2}'  | xargs -I {} fwconsole ma remove {}
+  # Remove firewall module also because that is depends on commercial sysadmin module
+  fwconsole ma uninstall firewall
+  fwconsole ma remove firewall
+}
+
 refresh_signatures() {
   fwconsole ma refreshsignatures >> "$log" 2>&1
 }
@@ -612,7 +625,9 @@ check_freepbx() {
         message "FreePBX is not installed. Please install FreePBX to proceed."
     else
         verify_module_status
-        inspect_network_ports
+	if [ ! $opensourceonly ] ; then
+        	inspect_network_ports
+	fi
         inspect_running_processes
         inspect_job_status=$(fwconsole job --list)
         message "Job list : $inspect_job_status"
@@ -1190,7 +1205,13 @@ chown -R asterisk:asterisk /var/www/html/
 #Creating post apt scripts
 create_post_apt_script
 
-setCurrentStep "Installation successful."
+setCurrentStep "FreePBX 17 Installation finished successfully."
+
+# Check if only opensource required then remove the commercial modules
+if [ $opensourceonly ] ; then
+	remove_commercial_modules
+fi
+
 
 ############ POST INSTALL VALIDATION ############################################
 # Commands for post-installation validation
