@@ -220,25 +220,6 @@ pkg_install() {
 	log "############################### "
 }
 
-# Function to install the mongodb
-install_mongodb() {
-	if isinstalled mongodb-org; then
-		log "mongodb already installed ...."
-	else
-		message "Installing mongodb...."
-		# Ref - https://medium.com/@arun0808rana/mongodb-installation-on-debian-12-8001d0dafb56
-		apt-get install -y mongodb-org >> "$log" 2>&1
-
-		if isinstalled mongodb-org; then
-			message "Mongodb installed successfully...."
-		else
-			message "Mongodb failed to install ...."
-			exit 1
-		fi
-	fi
-}
-
-
 # Function to install the libfdk-aac
 install_libfdk() {
       if isinstalled libfdk-aac2; then
@@ -315,8 +296,6 @@ setup_repositories() {
 		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
 	fi
 
-	wget -qO - https://pgp.mongodb.com/server-7.0.asc | gpg  --dearmor --yes -o /etc/apt/trusted.gpg.d/mongodb-server-7.0.gpg >> "$log" 2>&1
-      add-apt-repository -y -S "deb [ arch=${arch} ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" >> "$log" 2>&1
       add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log" 2>&1
 
 	setCurrentStep "Setting up Sangoma repository"
@@ -935,10 +914,6 @@ if [[ "$dahdi" == true ]]; then
                 pkg_install ${DAHDIPKGS[$i]}
         done
 fi
-
-# Install mongod
-setCurrentStep "Setting up MongoDB"
-install_mongodb
 
 # Install libfdk
 setCurrentStep "Setting up libfdk"
