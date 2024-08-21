@@ -947,6 +947,7 @@ mkdir -p /tftpboot
 chown -R asterisk:asterisk /tftpboot
 #changing the tftp process path to tftpboot
 sed -i -e "s|^TFTP_DIRECTORY=\"/srv\/tftp\"$|TFTP_DIRECTORY=\"/tftpboot\"|" /etc/default/tftpd-hpa
+sed -i -e "s|^TFTP_OPTIONS=\"--secure\"$|TFTP_OPTIONS=\"--secure --ipv4\"|" /etc/default/tftpd-hpa
 # Creating asterisk sound directory
 mkdir -p /var/lib/asterisk/sounds
 chown -R asterisk:asterisk /var/lib/asterisk
