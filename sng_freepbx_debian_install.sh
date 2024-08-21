@@ -225,7 +225,7 @@ install_mongodb() {
 	if isinstalled mongodb-org; then
 		log "mongodb already installed ...."
 	else
-		message "Installing  mongodb...."
+		message "Installing mongodb...."
 		# Ref - https://medium.com/@arun0808rana/mongodb-installation-on-debian-12-8001d0dafb56
 		apt-get install -y mongodb-org >> "$log" 2>&1
 
@@ -763,7 +763,7 @@ message "                                  OR"
 message " Ensure you are always running DAHDI supported Kernel. Current DAHDI supporter latest kernel version is $lat_dahdi_supp_ver"
 
 if [ $dahdi ]; then
-    setCurrentStep "Making sure we allow only proper kernel upgrade and version installtion"
+    setCurrentStep "Making sure we allow only proper kernel upgrade and version installation"
     check_kernel_compatibility
 fi
 
@@ -1050,7 +1050,7 @@ EOF
 
 # Install Asterisk
 if [ $noast ] ; then
-	message "Skipping Asterisk installation due to noastrisk option"
+	message "Skipping Asterisk installation due to noasterisk option"
 else
 	# TODO Need to check if asterisk installed already then remove that and install new ones.
 	# Install Asterisk 21
@@ -1093,8 +1093,7 @@ touch /etc/asterisk/extensions_additional.conf
 touch /etc/asterisk/extensions_custom.conf
 chown -R asterisk:asterisk /etc/asterisk
 
-setCurrentStep "Restating fail2ban"
-log "Restarting fail2ban "
+setCurrentStep "Restarting fail2ban"
 /usr/bin/systemctl restart fail2ban  >> $log
 
 
@@ -1109,7 +1108,7 @@ else
   fwconsole ma install sysadmin >> $log 2>&1
 
   #Not installing sangoma connect result in failure of first installlocal
-  setCurrentStep "Installing sangomaconnectmodule"
+  setCurrentStep "Installing sangomaconnect module"
   fwconsole ma install sangomaconnect>> $log 2>&1
 
 
@@ -1124,7 +1123,7 @@ else
   setCurrentStep "Upgrading FreePBX 17 modules"
   fwconsole ma upgradeall >> $log 2>&1
 
-  setCurrentStep "reloading and restarting FreePBX 17"
+  setCurrentStep "Reloading and restarting FreePBX 17"
   fwconsole reload >> $log 2>&1
   fwconsole restart >> $log 2>&1
 fi
