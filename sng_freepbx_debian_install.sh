@@ -516,10 +516,11 @@ check_kernel_compatibility() {
 }
 
 remove_commercial_modules() {
-  fwconsole ma list | grep Commercial | awk '{print $2}'  | xargs -I {} fwconsole ma -f uninstall {} >> "$log" 2>&1
-  fwconsole ma list | grep Commercial | awk '{print $2}'  | xargs -I {} fwconsole ma remove {}
-  # Remove firewall module also because that is depends on commercial sysadmin module
-  fwconsole ma uninstall firewall
+  comm_modules=$(fwconsole ma list | grep Commercial | awk '{print $2}')
+  echo "$comm_modules" | xargs -I {} fwconsole ma -f uninstall {} >> "$log" 2>&1
+  echo "$comm_modules" | xargs -I {} fwconsole ma remove {}
+  # Remove firewall module also because it depends on commercial sysadmin module
+  fwconsole ma uninstall firewall >> "$log" 2>&1
   fwconsole ma remove firewall
 }
 
@@ -1123,6 +1124,12 @@ else
   setCurrentStep "Installing install local module"
   fwconsole ma installlocal >> $log 2>&1
 
+  # Check if only opensource required then remove the commercial modules
+  if [ $opensourceonly ] ; then
+	setCurrentStep "Removing commercial modules"
+	remove_commercial_modules
+  fi
+
   setCurrentStep "Upgrading FreePBX 17 modules"
   fwconsole ma upgradeall >> $log 2>&1
 
@@ -1216,11 +1223,6 @@ chown -R asterisk:asterisk /var/www/html/
 create_post_apt_script
 
 setCurrentStep "FreePBX 17 Installation finished successfully."
-
-# Check if only opensource required then remove the commercial modules
-if [ $opensourceonly ] ; then
-	remove_commercial_modules
-fi
 
 
 ############ POST INSTALL VALIDATION ############################################
