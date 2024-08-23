@@ -717,7 +717,7 @@ message "  Starting FreePBX 17 installation process for $host $kernel"
 message "  Please refer to the $log to know the process..."
 log "  Executing script v$SCRIPTVER ..."
 
-setCurrentStep "Making sure installation is same"
+setCurrentStep "Making sure installation is sane"
 # Fixing broken install
 apt -y --fix-broken install >> $log 2>&1
 apt autoremove -y >> "$log" 2>&1
