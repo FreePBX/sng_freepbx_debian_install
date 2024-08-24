@@ -1120,7 +1120,7 @@ else
 	echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
   fi
 
-  setCurrentStep "Installing install local module"
+  setCurrentStep "Installing all local modules"
   fwconsole ma installlocal >> $log 2>&1
 
   setCurrentStep "Upgrading FreePBX 17 modules"
