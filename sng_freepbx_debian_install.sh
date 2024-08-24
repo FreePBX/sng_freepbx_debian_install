@@ -718,7 +718,7 @@ message "  Starting FreePBX 17 installation process for $host $kernel"
 message "  Please refer to the $log to know the process..."
 log "  Executing script v$SCRIPTVER ..."
 
-setCurrentStep "Making sure installation is same"
+setCurrentStep "Making sure installation is sane"
 # Fixing broken install
 apt -y --fix-broken install >> $log 2>&1
 apt autoremove -y >> "$log" 2>&1
@@ -1121,7 +1121,7 @@ else
 	echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
   fi
 
-  setCurrentStep "Installing install local module"
+  setCurrentStep "Installing all local modules"
   fwconsole ma installlocal >> $log 2>&1
 
   # Check if only opensource required then remove the commercial modules
