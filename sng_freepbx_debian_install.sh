@@ -518,10 +518,10 @@ check_kernel_compatibility() {
 remove_commercial_modules() {
   comm_modules=$(fwconsole ma list | grep Commercial | awk '{print $2}')
   echo "$comm_modules" | xargs -I {} fwconsole ma -f uninstall {} >> "$log" 2>&1
-  echo "$comm_modules" | xargs -I {} fwconsole ma remove {}
+  echo "$comm_modules" | xargs -I {} fwconsole ma remove {} >> "$log" 2>&1
   # Remove firewall module also because it depends on commercial sysadmin module
   fwconsole ma uninstall firewall >> "$log" 2>&1
-  fwconsole ma remove firewall
+  fwconsole ma remove firewall >> "$log" 2>&1
 }
 
 refresh_signatures() {
