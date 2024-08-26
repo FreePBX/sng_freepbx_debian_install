@@ -776,15 +776,13 @@ systemctl mask tftpd-hpa.service
 
 # Install dependent packages
 setCurrentStep "Installing required packages"
-DEPCOMPKGS=(
+DEPPRODPKGS=(
 	"redis-server"
-	"libsybdb5"
 	"ghostscript"
 	"libtiff-tools"
 	"iptables-persistent"
 	"net-tools"
 	"rsyslog"
-	"libavahi-client3"
 	"nmap"
 	"apache2"
 	"zip"
@@ -793,10 +791,9 @@ DEPCOMPKGS=(
 	"wget"
 	"vim"
 	"openssh-server"
+	"rsync"
 	"mariadb-server"
 	"mariadb-client"
-	"bison"
-	"flex"
 	"flite"
 	"php${PHPVERSION}"
 	"php${PHPVERSION}-curl"
@@ -848,7 +845,10 @@ DEPCOMPKGS=(
 	"ca-certificates"
 	"cron"
 	"python3-mysqldb"
+	"python-is-python3"
 	"at"
+	"liburiparser1"
+	"libavdevice59"
 )
 DEPDEVPKGS=(
 	"libsnmp-dev"
@@ -890,47 +890,13 @@ DEPDEVPKGS=(
 	"automake"
 	"autoconf"
 	"libtool-bin"
-)
-DEPPRODPKGS=(
-	"libsnmp40"
-	"libtonezone2.0"
-	"libpq5"
-	"liblua5.2-0"
-	"libpri1.4"
-	"libbluetooth3"
-	"libunbound8"
-	"libspeexdsp1"
-	"libiksemel3"
-	"libresample1"
-	"libgmime-3.0-0"
-	"libc-client2007e"
-	"libncurses6"
-	"libncursesw6"
-	"libssl3"
-	"libxml2"
-	"libnewt0.52"
-	"libsqlite3-0"
-	"unixodbc"
-	"libuuid1"
-	"libasound2"
-	"libogg0"
-	"libvorbisenc2"
-	"libvorbisfile3"
-	"libicu72"
-	"libcurl4"
-	"libical3"
-	"libneon27"
-	"libsrtp2-1"
-	"libspandsp2"
-	"libjansson4"
-	"liburiparser1"
-	"libavdevice59"
-	"python-is-python3"
+	"bison"
+	"flex"
 )
 if [ $dev ]; then
-	DEPPKGS=("${DEPCOMPKGS[@]}" "${DEPDEVPKGS[@]}")
+	DEPPKGS=("${DEPPRODPKGS[@]}" "${DEPDEVPKGS[@]}")
 else
-	DEPPKGS=("${DEPCOMPKGS[@]}" "${DEPPRODPKGS[@]}")
+	DEPPKGS=("${DEPPRODPKGS[@]}")
 fi
 for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
