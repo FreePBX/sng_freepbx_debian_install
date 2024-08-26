@@ -1169,7 +1169,7 @@ a2enmod rewrite >> "$log" 2>&1
 
 #Enabling freepbx apache configuration
 if [ ! $nofpbx ] ; then 
-  a2ensite freepbx.conf
+  a2ensite freepbx.conf >> "$log" 2>&1
 fi
 
 #Setting postfix size to 100MB
