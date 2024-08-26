@@ -124,7 +124,10 @@ while [[ $# -gt 0 ]]; do
 			noioncube=true
 			shift # past argument
 			;;
-
+		--noaac)
+			noaac=true
+			shift # past argument
+			;;
                 --skipversion)
                         skipversion=true
                         shift # past argument
@@ -138,6 +141,7 @@ while [[ $# -gt 0 ]]; do
                         nofpbx=true
                         noast=true
                         noioncube=true
+                        noaac=true
                         dahdi=true
                         shift # past argument
                         ;;
@@ -301,7 +305,9 @@ setup_repositories() {
 		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
 	fi
 
-      add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log" 2>&1
+	if [ ! $noaac ] ; then
+		add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log" 2>&1
+	fi
 
 	setCurrentStep "Setting up Sangoma repository"
 cat <<EOF> /etc/apt/preferences.d/99sangoma-fpbx-repository
@@ -934,9 +940,13 @@ if [[ "$dahdi" == true ]]; then
         done
 fi
 
-# Install libfdk
-setCurrentStep "Setting up libfdk"
-install_libfdk
+# Install libfdk-aac2
+if [ $noaac ] ; then
+	message "Skipping libfdk-aac2 installation due to noaac option"
+else
+	setCurrentStep "Setting up libfdk-aac2"
+	install_libfdk
+fi
 
 setCurrentStep "Removing unnecessary packages"
 apt autoremove -y >> "$log" 2>&1
