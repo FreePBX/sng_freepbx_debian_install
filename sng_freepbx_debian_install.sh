@@ -283,15 +283,6 @@ install_asterisk() {
 }
 
 setup_repositories() {
-	#Add PHP repository
-	wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
-	if [ "${DISTRIBUTION}" = "Ubuntu" ]; then
-	    add-apt-repository -y "ppa:ondrej/php" >> "$log" 2>&1
-	    add-apt-repository -y "ppa:ondrej/apache2" >> "$log" 2>&1
-	else
-		add-apt-repository -y -S "deb [ arch=${arch} ] https://packages.sury.org/php/ $(lsb_release -sc) main" >> "$log" 2>&1
-	fi
-
 	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log" 2>&1
 
 	wget -qO - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log" 2>&1
