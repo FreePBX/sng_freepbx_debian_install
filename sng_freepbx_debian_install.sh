@@ -849,6 +849,8 @@ DEPPRODPKGS=(
 	"at"
 	"liburiparser1"
 	"libavdevice59"
+	"pkgconf"
+	"libicu-dev"
 )
 DEPDEVPKGS=(
 	"libsnmp-dev"
@@ -873,7 +875,6 @@ DEPDEVPKGS=(
 	"libasound2-dev"
 	"libogg-dev"
 	"libvorbis-dev"
-	"libicu-dev"
 	"libcurl4-openssl-dev"
 	"libical-dev"
 	"libneon27-dev"
@@ -886,7 +887,6 @@ DEPDEVPKGS=(
 	"default-libmysqlclient-dev"
 	"dpkg-dev"
 	"build-essential"
-	"pkg-config"
 	"automake"
 	"autoconf"
 	"libtool-bin"
