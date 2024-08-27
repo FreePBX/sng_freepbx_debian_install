@@ -765,8 +765,8 @@ apt update >> $log 2>&1
 # log the apt-cache policy
 apt-cache policy  >> $log 2>&1
 
-# Don't start the tftp daemon automatically, as we need to change it's configuration
-systemctl mask tftpd-hpa.service
+# Don't start the tftp & chrony daemons automatically, as we need to change their configuration
+systemctl mask tftpd-hpa.service chrony.service
 
 # Install dependent packages
 setCurrentStep "Installing required packages"
@@ -967,13 +967,14 @@ mkdir -p /tftpboot
 chown -R asterisk:asterisk /tftpboot
 # Changing the tftp process path to tftpboot
 sed -i -e "s|^TFTP_DIRECTORY=\"/srv\/tftp\"$|TFTP_DIRECTORY=\"/tftpboot\"|" /etc/default/tftpd-hpa
-# Change the tftp options when IPv6 is not available, to allow successful execution
+# Change the tftp & chrony options when IPv6 is not available, to allow successful execution
 if [ ! -f /proc/net/if_inet6 ]; then
 	sed -i -e "s|^TFTP_OPTIONS=\"--secure\"$|TFTP_OPTIONS=\"--secure --ipv4\"|" /etc/default/tftpd-hpa
+	sed -i -e "s|^DAEMON_OPTS=\"-F 1\"$|DAEMON_OPTS=\"-F 1 -4\"|" /etc/default/chrony
 fi
-# Start the tftp daemon
-systemctl unmask tftpd-hpa.service
-systemctl start tftpd-hpa.service
+# Start the tftp & chrony daemons
+systemctl unmask tftpd-hpa.service chrony.service
+systemctl start tftpd-hpa.service chrony.service
 
 # Creating asterisk sound directory
 mkdir -p /var/lib/asterisk/sounds
