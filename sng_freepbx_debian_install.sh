@@ -844,11 +844,15 @@ DEPPRODPKGS=(
 	"lsb-release"
 	"ca-certificates"
 	"cron"
+	"at"
+	# Asterisk package
+	"liburiparser1"
+	# ffmpeg package
+	"libavdevice59"
+	# System Admin module
 	"python3-mysqldb"
 	"python-is-python3"
-	"at"
-	"liburiparser1"
-	"libavdevice59"
+	# User Control Panel module
 	"pkgconf"
 	"libicu-dev"
 )
