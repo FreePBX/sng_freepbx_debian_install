@@ -27,10 +27,10 @@ if ! grep -Fxq 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/
 fi
 set -e
 if ! dpkg -l | grep -q lsb-release >> /dev/null 2>&1 ; then
-    apt install -y lsb-release >> /dev/null 2>&1
+    apt-get install -y lsb-release >> /dev/null 2>&1
 fi
 if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
-    apt install -y wget >> /dev/null 2>&1
+    apt-get install -y wget >> /dev/null 2>&1
 fi
 SCRIPTVER="1.8"
 ASTVERSION=21
@@ -717,8 +717,8 @@ log "  Executing script v$SCRIPTVER ..."
 
 setCurrentStep "Making sure installation is sane"
 # Fixing broken install
-apt -y --fix-broken install >> $log 2>&1
-apt autoremove -y >> "$log" 2>&1
+apt-get -y --fix-broken install >> $log 2>&1
+apt-get autoremove -y >> "$log" 2>&1
 
 # Check if the CD-ROM repository is present in the sources.list file
 if grep -q "^deb cdrom" /etc/apt/sources.list; then
@@ -727,7 +727,7 @@ if grep -q "^deb cdrom" /etc/apt/sources.list; then
   message "Commented out CD-ROM repository in sources.list"
 fi
 
-apt update >> $log 2>&1
+apt-get update >> $log 2>&1
 
 # Adding iptables and postfix  inputs so "iptables-persistent" and postfix will not ask for the input
 setCurrentStep "Setting up default configuration"
@@ -760,7 +760,7 @@ if [ $dahdi ]; then
 fi
 
 setCurrentStep "Updating repository"
-apt update >> $log 2>&1
+apt-get update >> $log 2>&1
 
 # log the apt-cache policy
 apt-cache policy  >> $log 2>&1
@@ -940,7 +940,7 @@ else
 fi
 
 setCurrentStep "Removing unnecessary packages"
-apt autoremove -y >> "$log" 2>&1
+apt-get autoremove -y >> "$log" 2>&1
 
 execution_time="$(($(date +%s) - $start))"
 message "Execution time to install all the dependent packages : $execution_time s"
