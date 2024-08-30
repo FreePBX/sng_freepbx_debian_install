@@ -21,10 +21,6 @@
 #####################################################################################
 #                                               FreePBX 17                          #
 #####################################################################################
-if ! grep -Fxq 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' /root/.bashrc; then
-  echo 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' >> /root/.bashrc
-  export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-fi
 set -e
 if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
     apt-get install -y wget >> /dev/null 2>&1
@@ -35,11 +31,18 @@ PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
 log=$LOG_FILE
+SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
+fi
+
+# Setup a sane PATH for script execution as root
+if ! grep -q "export PATH=$SANE_PATH" /root/.bashrc; then
+  echo "export PATH=$SANE_PATH" >> /root/.bashrc
+  export PATH=$SANE_PATH
 fi
 
 mkdir -p "${LOG_FOLDER}"
