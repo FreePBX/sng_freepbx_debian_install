@@ -928,7 +928,7 @@ fi
 setCurrentStep "Removing unnecessary packages"
 apt-get autoremove -y >> "$log" 2>&1
 
-execution_time="$(($(date +%s) - $start))"
+execution_time="$(($(date +%s) - start))"
 message "Execution time to install all the dependent packages : $execution_time s"
 
 
@@ -1229,7 +1229,7 @@ fi
 
 check_asterisk
 
-execution_time="$(($(date +%s) - $start))"
+execution_time="$(($(date +%s) - start))"
 message "Total script Execution Time: $execution_time"
 message "Finished FreePBX 17 installation process for $host $kernel"
 message "Join us on the FreePBX Community Forum: https://community.freepbx.org/ ";
