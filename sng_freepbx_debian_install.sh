@@ -362,7 +362,7 @@ create_post_apt_script() {
 check_kernel_compatibility() {
     local latest_dahdi_supported_version=$(apt-cache search dahdi | grep -E "^dahdi-linux-kmod-[0-9]" | awk '{print $1}' | awk -F'-' '{print $4"-"$5}' | sort -n | tail -1)
     local latest_wanpipe_supported_version=$(apt-cache search wanpipe | grep -E "^kmod-wanpipe-[0-9]" | awk '{print $1}' | awk -F'-' '{print $3"-"$4}' | sort -n | tail -1)
-    local curr_kernel_version=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+    local curr_kernel_version=$(apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq)
 
     if dpkg --compare-versions "$latest_dahdi_supported_version" "eq" "$latest_wanpipe_supported_version"; then
         local supported_kernel_version=$latest_dahdi_supported_version
@@ -655,8 +655,8 @@ hold_packages() {
 
 ################################################################################################################
 MIRROR_PRIO=600
-kernel=`uname -a`
-host=`hostname`
+kernel=$(uname -a)
+host=$(hostname)
 fqdn="$(hostname -f)" || true
 
 # Install below packages which are required for version check and repositories setup
@@ -733,7 +733,7 @@ setCurrentStep "Setting up repositories"
 setup_repositories
 
 lat_dahdi_supp_ver=$(apt-cache search dahdi | grep -E "^dahdi-linux-kmod-[0-9]" | awk '{print $1}' | awk -F'-' '{print $4"-"$5}' | sort -n | tail -1)
-curr_ker_ver=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+curr_ker_ver=$(apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq)
 
 message " You are installing FreePBX 17 on kernel $curr_ker_ver.."
 message " Please note that if you have plan to use DAHDI then:"
@@ -899,7 +899,7 @@ rm -f /etc/openvpn/easyrsa3/vars
 # Install Dahdi card support if --dahdi option is provided
 if [[ "$dahdi" == true ]]; then
     echo "Installing Dahdi card support..."
-    kernel_version=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+    kernel_version=$(apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq)
     DAHDIPKGS=("asterisk21-dahdi"
            "dahdi-firmware"
            "dahdi-linux"
@@ -935,12 +935,12 @@ message "Execution time to install all the dependent packages : $execution_time 
 
 
 setCurrentStep "Setting up folders and asterisk config"
-groupExists="`getent group asterisk || echo ''`"
+groupExists="$(getent group asterisk || echo '')"
 if [ "${groupExists}" = "" ]; then
 	groupadd -r asterisk
 fi
 
-userExists="`getent passwd asterisk || echo ''`"
+userExists="$(getent passwd asterisk || echo '')"
 if [ "${userExists}" = "" ]; then
 	useradd -r -g asterisk -d /home/asterisk -M -s /bin/bash asterisk
 fi
@@ -1002,8 +1002,8 @@ fi
 # Setting VIM configuration for mouse copy paste
 isVimRcAdapted=$(grep "FreePBX 17 changes" /etc/vim/vimrc.local |wc -l)
 if [ "0" = "${isVimRcAdapted}" ]; then
-	VIMRUNTIME=`vim -e -T dumb --cmd 'exe "set t_cm=\<C-M>"|echo $VIMRUNTIME|quit' | tr -d '\015' `
-	VIMRUNTIME_FOLDER=`echo $VIMRUNTIME | sed 's/ //g'`
+	VIMRUNTIME=$(vim -e -T dumb --cmd 'exe "set t_cm=\<C-M>"|echo $VIMRUNTIME|quit' | tr -d '\015' )
+	VIMRUNTIME_FOLDER=$(echo $VIMRUNTIME | sed 's/ //g')
 
 	cat <<EOF >> /etc/vim/vimrc.local
 " FreePBX 17 changes - begin
