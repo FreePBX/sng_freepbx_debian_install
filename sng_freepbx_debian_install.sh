@@ -34,7 +34,6 @@ if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
 fi
 SCRIPTVER="1.8"
 ASTVERSION=21
-AACVERSION="2.0.1-1"
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
@@ -301,13 +300,20 @@ setup_repositories() {
 	fi
 
 	setCurrentStep "Setting up Sangoma repository"
-cat <<EOF> /etc/apt/preferences.d/99sangoma-fpbx-repository
-# Allways prefer packages from deb.freepbx.org
-
+    local aptpref="/etc/apt/preferences.d/99sangoma-fpbx-repository"
+    cat <<EOF> $aptpref
 Package: *
 Pin: origin deb.freepbx.org
 Pin-Priority: ${MIRROR_PRIO}
 EOF
+    if [ $noaac ]; then
+    cat <<EOF>> $aptpref
+
+Package: ffmpeg
+Pin: origin deb.freepbx.org
+Pin-Priority: 1
+EOF
+    fi
 }
 
 create_kernel_script() {
