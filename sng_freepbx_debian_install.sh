@@ -26,9 +26,6 @@ if ! grep -Fxq 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/
   export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 fi
 set -e
-if ! dpkg -l | grep -q lsb-release >> /dev/null 2>&1 ; then
-    apt-get install -y lsb-release >> /dev/null 2>&1
-fi
 if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
     apt-get install -y wget >> /dev/null 2>&1
 fi
@@ -37,7 +34,6 @@ ASTVERSION=21
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
-DISTRIBUTION="$(lsb_release -is)"
 log=$LOG_FILE
 
 # Check for root privileges
