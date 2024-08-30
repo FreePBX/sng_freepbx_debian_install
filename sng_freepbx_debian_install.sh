@@ -228,22 +228,6 @@ pkg_install() {
 	log "############################### "
 }
 
-# Function to install the libfdk-aac
-install_libfdk() {
-      if isinstalled libfdk-aac2; then
-            log "libfdk-aac2 already installed ...."
-      else
-            message "Installing libfdk-aac2...."
-            apt-get install -y libfdk-aac2 >> "$log" 2>&1
-      if isinstalled libfdk-aac2; then
-            message "libfdk-aac2 installed successfully....."
-      else
-            message "libfdk-aac2 failed to install ...."
-            exit 1
-      fi
-fi
-}
-
 # Function to install the asterisk and dependent packages
 install_asterisk() {
 	astver=$1
@@ -941,8 +925,7 @@ fi
 if [ $noaac ] ; then
 	message "Skipping libfdk-aac2 installation due to noaac option"
 else
-	setCurrentStep "Setting up libfdk-aac2"
-	install_libfdk
+	pkg_install libfdk-aac2
 fi
 
 setCurrentStep "Removing unnecessary packages"
