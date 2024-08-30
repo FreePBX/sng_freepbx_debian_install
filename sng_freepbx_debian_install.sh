@@ -656,7 +656,6 @@ hold_packages() {
 ################################################################################################################
 MIRROR_PRIO=600
 kernel=`uname -a`
-arch=`dpkg --print-architecture`
 host=`hostname`
 fqdn="$(hostname -f)" || true
 
