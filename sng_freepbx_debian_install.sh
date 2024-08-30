@@ -656,10 +656,8 @@ kernel=$(uname -a)
 host=$(hostname)
 fqdn="$(hostname -f)" || true
 
-# Install below packages which are required for version check and repositories setup
+# Install wget which is required for version check
 pkg_install wget
-pkg_install software-properties-common
-pkg_install gnupg
 
 # Script version check
 if [[ $skipversion ]]; then
@@ -725,6 +723,10 @@ iptables-persistent iptables-persistent/autosave_v6 boolean true
 EOF
 echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
+
+# Install below packages which are required for repositories setup
+pkg_install software-properties-common
+pkg_install gnupg
 
 setCurrentStep "Setting up repositories"
 setup_repositories
