@@ -42,9 +42,6 @@ if ! grep -q "export PATH=$SANE_PATH" /root/.bashrc; then
   export PATH=$SANE_PATH
 fi
 
-# Get parameters
-POSITIONAL_ARGS=()
-
 while [[ $# -gt 0 ]]; do
 	case $1 in
 		--testing)
@@ -88,13 +85,13 @@ while [[ $# -gt 0 ]]; do
 			dahdi=true
 			shift # past argument
 			;;
-		-*|--*)
+		-*)
 			echo "Unknown option $1"
 			exit 1
 			;;
 		*)
-			POSITIONAL_ARGS+=("$1") # save positional arg
-			shift # past argument
+			echo "Unknown argument \"$1\""
+			exit 1
 			;;
 	esac
 done
