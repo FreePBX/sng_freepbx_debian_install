@@ -42,11 +42,68 @@ if ! grep -q "export PATH=$SANE_PATH" /root/.bashrc; then
   export PATH=$SANE_PATH
 fi
 
+# Get parameters
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+	case $1 in
+		--testing)
+			testrepo=true
+			shift # past argument
+			;;
+		--nofreepbx)
+			nofpbx=true
+			shift # past argument
+			;;
+		--noasterisk)
+			noast=true
+			shift # past argument
+			;;
+		--opensourceonly)
+			opensourceonly=true
+			shift # past argument
+			;;
+		--noioncube)
+			noioncube=true
+			shift # past argument
+			;;
+		--noaac)
+			noaac=true
+			shift # past argument
+			;;
+		--skipversion)
+			skipversion=true
+			shift # past argument
+			;;
+		--dahdi)
+			dahdi=true
+			shift # past argument
+			;;
+		--dahdi-only)
+			skipversion=true
+			nofpbx=true
+			noast=true
+			noioncube=true
+			noaac=true
+			dahdi=true
+			shift # past argument
+			;;
+		-*|--*)
+			echo "Unknown option $1"
+			exit 1
+			;;
+		*)
+			POSITIONAL_ARGS+=("$1") # save positional arg
+			shift # past argument
+			;;
+	esac
+done
+
 mkdir -p "${LOG_FOLDER}"
 echo "" > $log
 
-# Get parameters
-POSITIONAL_ARGS=()
+#Helpers APIs
+exec 2>>${LOG_FILE}
 
 #Comparing version
 compare_version() {
@@ -97,63 +154,6 @@ check_version() {
             ;;
         esac
 }
-
-while [[ $# -gt 0 ]]; do
-	case $1 in
-		--testing)
-			testrepo=true
-			shift # past argument
-			;;
-		--nofreepbx)
-			nofpbx=true
-			shift # past argument
-			;;
-		--noasterisk)
-			noast=true
-			shift # past argument
-			;;
-		--opensourceonly)
-			opensourceonly=true
-			shift # past argument
-			;;
-		--noioncube)
-			noioncube=true
-			shift # past argument
-			;;
-		--noaac)
-			noaac=true
-			shift # past argument
-			;;
-                --skipversion)
-                        skipversion=true
-                        shift # past argument
-                        ;;
-		--dahdi)
-                        dahdi=true
-                        shift # past argument
-                        ;;
-	        --dahdi-only)
-			skipversion=true
-                        nofpbx=true
-                        noast=true
-                        noioncube=true
-                        noaac=true
-                        dahdi=true
-                        shift # past argument
-                        ;;
-		-*|--*)
-			echo "Unknown option $1"
-			exit 1
-			;;
-		*)
-			POSITIONAL_ARGS+=("$1") # save positional arg
-			shift # past argument
-			;;
-	esac
-done
-
-#Helpers APIs
-exec 2>>${LOG_FILE}
 
 # Function to log messages
 log() {
