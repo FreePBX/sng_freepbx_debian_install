@@ -22,9 +22,6 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 set -e
-if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
-    apt-get install -y wget >> /dev/null 2>&1
-fi
 SCRIPTVER="1.8"
 ASTVERSION=21
 PHPVERSION="8.2"
@@ -100,6 +97,7 @@ check_version() {
             ;;
         esac
 }
+
 while [[ $# -gt 0 ]]; do
 	case $1 in
 		--testing)
@@ -153,15 +151,6 @@ while [[ $# -gt 0 ]]; do
 			;;
 	esac
 done
-
-if [[ $skipversion ]]; then
-    echo "Skipping version check..."
-else
-    # Perform version check if --skipversion is not provided
-    echo "Performing version check..."
-    check_version
-fi
-
 
 #Helpers APIs
 exec 2>>${LOG_FILE}
@@ -671,6 +660,20 @@ arch=`dpkg --print-architecture`
 host=`hostname`
 fqdn="$(hostname -f)" || true
 
+# Install below packages which are required for version check and repositories setup
+pkg_install wget
+pkg_install software-properties-common
+pkg_install gnupg
+
+# Script version check
+if [[ $skipversion ]]; then
+    message "Skipping version check..."
+else
+    # Perform version check if --skipversion is not provided
+    message "Performing version check..."
+    check_version
+fi
+
 # Check if hostname command succeeded and FQDN is not empty
 if [ -z "$fqdn" ]; then
     echo "Fully qualified domain name (FQDN) is not set correctly."
@@ -726,10 +729,6 @@ iptables-persistent iptables-persistent/autosave_v6 boolean true
 EOF
 echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
-
-# Install below packages which is required to add the repository
-pkg_install software-properties-common
-pkg_install gnupg
 
 setCurrentStep "Setting up repositories"
 setup_repositories
