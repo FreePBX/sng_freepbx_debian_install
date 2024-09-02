@@ -77,7 +77,6 @@ while [[ $# -gt 0 ]]; do
 			shift # past argument
 			;;
 		--dahdi-only)
-			skipversion=true
 			nofpbx=true
 			noast=true
 			noioncube=true
