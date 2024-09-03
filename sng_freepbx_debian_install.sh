@@ -292,7 +292,7 @@ create_kernel_script() {
 create_post_apt_script() {
     #checking post-apt-run script
     if [ -e "/usr/bin/post-apt-run" ]; then
-        rm -rf /usr/bin/post-apt-run
+        rm -f /usr/bin/post-apt-run
     fi
 
     message "Creating script to run post every apt command is finished executing"
@@ -340,7 +340,7 @@ create_post_apt_script() {
     echo "fi" >> /usr/bin/post-apt-run
     echo "" >> /usr/bin/post-apt-run
     echo "if [ -e "/var/www/html/index.html" ]; then" >> /usr/bin/post-apt-run
-    echo "    rm -rf /var/www/html/index.html" >> /usr/bin/post-apt-run
+    echo "    rm -f /var/www/html/index.html" >> /usr/bin/post-apt-run
     echo "fi" >> /usr/bin/post-apt-run
 
     #Changing file permission to run script
@@ -348,7 +348,7 @@ create_post_apt_script() {
 
     #Adding Post Invoke for Update to run kernel-check
     if [ -e "/etc/apt/apt.conf.d/80postaptcmd" ]; then
-        rm -rf /etc/apt/apt.conf.d/80postaptcmd
+        rm -f /etc/apt/apt.conf.d/80postaptcmd
     fi
 
     echo "DPkg::Post-Invoke {\"/usr/bin/post-apt-run\";};" >> /etc/apt/apt.conf.d/80postaptcmd
@@ -372,7 +372,7 @@ check_kernel_compatibility() {
     fi
 
     if [ -e "/usr/bin/kernel-check" ]; then
-        rm -rf /usr/bin/kernel-check
+        rm -f /usr/bin/kernel-check
     fi
 
     if [ $testrepo ]; then
@@ -480,7 +480,7 @@ check_kernel_compatibility() {
 
     #Adding Post Invoke for Update to run kernel-check
     if [ -e "/etc/apt/apt.conf.d/05checkkernel" ]; then
-        rm -rf /etc/apt/apt.conf.d/05checkkernel
+        rm -f /etc/apt/apt.conf.d/05checkkernel
     fi
     echo "APT::Update::Post-Invoke {\"/usr/bin/kernel-check --hold\"}" >> /etc/apt/apt.conf.d/05checkkernel
     chmod 644 /etc/apt/apt.conf.d/05checkkernel
