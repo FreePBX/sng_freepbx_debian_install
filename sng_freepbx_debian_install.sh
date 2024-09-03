@@ -666,6 +666,14 @@ else
     check_version
 fi
 
+# Check if we are running on a 64-bit system
+ARCH=$(dpkg --print-architecture)
+if [ "$ARCH" != "amd64" ]; then
+    message "FreePBX 17 installation can only be made on a 64-bit (amd64) system!"
+    message "Current System's Architecture: $ARCH"
+    exit 1
+fi
+
 # Check if hostname command succeeded and FQDN is not empty
 if [ -z "$fqdn" ]; then
     echo "Fully qualified domain name (FQDN) is not set correctly."
