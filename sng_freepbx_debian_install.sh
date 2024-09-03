@@ -21,24 +21,14 @@
 #####################################################################################
 #                                               FreePBX 17                          #
 #####################################################################################
-if ! grep -Fxq 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' /root/.bashrc; then
-  echo 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' >> /root/.bashrc
-  export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-fi
 set -e
-if ! dpkg -l | grep -q lsb-release >> /dev/null 2>&1 ; then
-    apt-get install -y lsb-release >> /dev/null 2>&1
-fi
-if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
-    apt-get install -y wget >> /dev/null 2>&1
-fi
 SCRIPTVER="1.8"
 ASTVERSION=21
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
-DISTRIBUTION="$(lsb_release -is)"
 log=$LOG_FILE
+SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
@@ -46,11 +36,70 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# Setup a sane PATH for script execution as root
+if ! grep -q "export PATH=$SANE_PATH" /root/.bashrc; then
+  echo "export PATH=$SANE_PATH" >> /root/.bashrc
+  export PATH=$SANE_PATH
+fi
+
+while [[ $# -gt 0 ]]; do
+	case $1 in
+		--testing)
+			testrepo=true
+			shift # past argument
+			;;
+		--nofreepbx)
+			nofpbx=true
+			shift # past argument
+			;;
+		--noasterisk)
+			noast=true
+			shift # past argument
+			;;
+		--opensourceonly)
+			opensourceonly=true
+			shift # past argument
+			;;
+		--noioncube)
+			noioncube=true
+			shift # past argument
+			;;
+		--noaac)
+			noaac=true
+			shift # past argument
+			;;
+		--skipversion)
+			skipversion=true
+			shift # past argument
+			;;
+		--dahdi)
+			dahdi=true
+			shift # past argument
+			;;
+		--dahdi-only)
+			nofpbx=true
+			noast=true
+			noioncube=true
+			noaac=true
+			dahdi=true
+			shift # past argument
+			;;
+		-*)
+			echo "Unknown option $1"
+			exit 1
+			;;
+		*)
+			echo "Unknown argument \"$1\""
+			exit 1
+			;;
+	esac
+done
+
 mkdir -p "${LOG_FOLDER}"
 echo "" > $log
 
-# Get parameters
-POSITIONAL_ARGS=()
+#Helpers APIs
+exec 2>>${LOG_FILE}
 
 #Comparing version
 compare_version() {
@@ -101,71 +150,6 @@ check_version() {
             ;;
         esac
 }
-while [[ $# -gt 0 ]]; do
-	case $1 in
-		--testing)
-			testrepo=true
-			shift # past argument
-			;;
-		--nofreepbx)
-			nofpbx=true
-			shift # past argument
-			;;
-		--noasterisk)
-			noast=true
-			shift # past argument
-			;;
-		--opensourceonly)
-			opensourceonly=true
-			shift # past argument
-			;;
-		--noioncube)
-			noioncube=true
-			shift # past argument
-			;;
-		--noaac)
-			noaac=true
-			shift # past argument
-			;;
-                --skipversion)
-                        skipversion=true
-                        shift # past argument
-                        ;;
-		--dahdi)
-                        dahdi=true
-                        shift # past argument
-                        ;;
-	        --dahdi-only)
-			skipversion=true
-                        nofpbx=true
-                        noast=true
-                        noioncube=true
-                        noaac=true
-                        dahdi=true
-                        shift # past argument
-                        ;;
-		-*|--*)
-			echo "Unknown option $1"
-			exit 1
-			;;
-		*)
-			POSITIONAL_ARGS+=("$1") # save positional arg
-			shift # past argument
-			;;
-	esac
-done
-
-if [[ $skipversion ]]; then
-    echo "Skipping version check..."
-else
-    # Perform version check if --skipversion is not provided
-    echo "Performing version check..."
-    check_version
-fi
-
-
-#Helpers APIs
-exec 2>>${LOG_FILE}
 
 # Function to log messages
 log() {
@@ -226,22 +210,6 @@ pkg_install() {
 		fi
 	fi
 	log "############################### "
-}
-
-# Function to install the libfdk-aac
-install_libfdk() {
-      if isinstalled libfdk-aac2; then
-            log "libfdk-aac2 already installed ...."
-      else
-            message "Installing libfdk-aac2...."
-            apt-get install -y libfdk-aac2 >> "$log" 2>&1
-      if isinstalled libfdk-aac2; then
-            message "libfdk-aac2 installed successfully....."
-      else
-            message "libfdk-aac2 failed to install ...."
-            exit 1
-      fi
-fi
 }
 
 # Function to install the asterisk and dependent packages
@@ -390,7 +358,7 @@ create_post_apt_script() {
 check_kernel_compatibility() {
     local latest_dahdi_supported_version=$(apt-cache search dahdi | grep -E "^dahdi-linux-kmod-[0-9]" | awk '{print $1}' | awk -F'-' '{print $4"-"$5}' | sort -n | tail -1)
     local latest_wanpipe_supported_version=$(apt-cache search wanpipe | grep -E "^kmod-wanpipe-[0-9]" | awk '{print $1}' | awk -F'-' '{print $3"-"$4}' | sort -n | tail -1)
-    local curr_kernel_version=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+    local curr_kernel_version=$(apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq)
 
     if dpkg --compare-versions "$latest_dahdi_supported_version" "eq" "$latest_wanpipe_supported_version"; then
         local supported_kernel_version=$latest_dahdi_supported_version
@@ -683,10 +651,21 @@ hold_packages() {
 
 ################################################################################################################
 MIRROR_PRIO=600
-kernel=`uname -a`
-arch=`dpkg --print-architecture`
-host=`hostname`
+kernel=$(uname -a)
+host=$(hostname)
 fqdn="$(hostname -f)" || true
+
+# Install wget which is required for version check
+pkg_install wget
+
+# Script version check
+if [[ $skipversion ]]; then
+    message "Skipping version check..."
+else
+    # Perform version check if --skipversion is not provided
+    message "Performing version check..."
+    check_version
+fi
 
 # Check if hostname command succeeded and FQDN is not empty
 if [ -z "$fqdn" ]; then
@@ -744,7 +723,7 @@ EOF
 echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
-# Install below packages which is required to add the repository
+# Install below packages which are required for repositories setup
 pkg_install software-properties-common
 pkg_install gnupg
 
@@ -752,7 +731,7 @@ setCurrentStep "Setting up repositories"
 setup_repositories
 
 lat_dahdi_supp_ver=$(apt-cache search dahdi | grep -E "^dahdi-linux-kmod-[0-9]" | awk '{print $1}' | awk -F'-' '{print $4"-"$5}' | sort -n | tail -1)
-curr_ker_ver=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+curr_ker_ver=$(apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq)
 
 message " You are installing FreePBX 17 on kernel $curr_ker_ver.."
 message " Please note that if you have plan to use DAHDI then:"
@@ -918,7 +897,7 @@ rm -f /etc/openvpn/easyrsa3/vars
 # Install Dahdi card support if --dahdi option is provided
 if [[ "$dahdi" == true ]]; then
     echo "Installing Dahdi card support..."
-    kernel_version=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+    kernel_version=$(apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq)
     DAHDIPKGS=("asterisk21-dahdi"
            "dahdi-firmware"
            "dahdi-linux"
@@ -941,26 +920,25 @@ fi
 if [ $noaac ] ; then
 	message "Skipping libfdk-aac2 installation due to noaac option"
 else
-	setCurrentStep "Setting up libfdk-aac2"
-	install_libfdk
+	pkg_install libfdk-aac2
 fi
 
 setCurrentStep "Removing unnecessary packages"
 apt-get autoremove -y >> "$log" 2>&1
 
-execution_time="$(($(date +%s) - $start))"
+execution_time="$(($(date +%s) - start))"
 message "Execution time to install all the dependent packages : $execution_time s"
 
 
 
 
 setCurrentStep "Setting up folders and asterisk config"
-groupExists="`getent group asterisk || echo ''`"
+groupExists="$(getent group asterisk || echo '')"
 if [ "${groupExists}" = "" ]; then
 	groupadd -r asterisk
 fi
 
-userExists="`getent passwd asterisk || echo ''`"
+userExists="$(getent passwd asterisk || echo '')"
 if [ "${userExists}" = "" ]; then
 	useradd -r -g asterisk -d /home/asterisk -M -s /bin/bash asterisk
 fi
@@ -1022,8 +1000,8 @@ fi
 # Setting VIM configuration for mouse copy paste
 isVimRcAdapted=$(grep "FreePBX 17 changes" /etc/vim/vimrc.local |wc -l)
 if [ "0" = "${isVimRcAdapted}" ]; then
-	VIMRUNTIME=`vim -e -T dumb --cmd 'exe "set t_cm=\<C-M>"|echo $VIMRUNTIME|quit' | tr -d '\015' `
-	VIMRUNTIME_FOLDER=`echo $VIMRUNTIME | sed 's/ //g'`
+	VIMRUNTIME=$(vim -e -T dumb --cmd 'exe "set t_cm=\<C-M>"|echo $VIMRUNTIME|quit' | tr -d '\015' )
+	VIMRUNTIME_FOLDER=$(echo $VIMRUNTIME | sed 's/ //g')
 
 	cat <<EOF >> /etc/vim/vimrc.local
 " FreePBX 17 changes - begin
@@ -1249,7 +1227,7 @@ fi
 
 check_asterisk
 
-execution_time="$(($(date +%s) - $start))"
+execution_time="$(($(date +%s) - start))"
 message "Total script Execution Time: $execution_time"
 message "Finished FreePBX 17 installation process for $host $kernel"
 message "Join us on the FreePBX Community Forum: https://community.freepbx.org/ ";
