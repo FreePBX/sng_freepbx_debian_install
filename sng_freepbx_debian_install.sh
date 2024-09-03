@@ -284,10 +284,6 @@ EOF
     fi
 }
 
-create_kernel_script() {
-    echo "$1" >> /usr/bin/kernel-check
-}
-
 #create post apt run script to run and check everything apt command is finished executing
 create_post_apt_script() {
     #checking post-apt-run script
@@ -296,52 +292,53 @@ create_post_apt_script() {
     fi
 
     message "Creating script to run post every apt command is finished executing"
-
-    echo "#!/bin/bash" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "kernel_idx=\$(grep GRUB_DEFAULT /etc/default/grub | cut -d '=' -f 2)" >> /usr/bin/post-apt-run
-    echo "kernel_pres=\$(sed -n '/^menuentry/,/}/p' /boot/grub/grub.cfg  | grep -o -P 'vmlinuz-\S+')" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "dahdi_pres=\$(dpkg -l | grep dahdi-linux | wc -l)" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "if [[ \$dahdi_pres -gt 0 ]]; then" >> /usr/bin/post-apt-run
-    echo "    idx=0" >> /usr/bin/post-apt-run
-    echo "    for kernel in \$kernel_pres; do" >> /usr/bin/post-apt-run
-    echo "        if [[ \$idx -ne \$kernel_idx ]]; then" >> /usr/bin/post-apt-run
-    echo "            idx=\$((idx+1))" >> /usr/bin/post-apt-run
-    echo "            continue" >> /usr/bin/post-apt-run
-    echo "        fi" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "        kernel_ver=\$(echo \$kernel | sed -n -e 's/vmlinuz-\([[:digit:].-]*\).*/\\1/' -e 's/-$//p')" >> /usr/bin/post-apt-run
-    echo "        logger \"Checking kernel modules for dahdi and wanpipe for kernel image \$kernel_ver\"" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "        #check if dahdi is installed or not of respective kernel version" >> /usr/bin/post-apt-run
-    echo "        dahdi_kmod_pres=\$(dpkg -l | grep dahdi-linux-kmod | grep \$kernel_ver | wc -l)" >> /usr/bin/post-apt-run
-    echo "        wanpipe_kmod_pres=\$(dpkg -l | grep kmod-wanpipe | grep \$kernel_ver | wc -l)" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "        if [[ \$dahdi_kmod_pres -eq 0 ]] && [[ \$wanpipe_kmod_pres -eq 0 ]]; then" >> /usr/bin/post-apt-run
-    echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver and kmod-wanpipe-\$kernel_ver\"" >> /usr/bin/post-apt-run
-    echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
-    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&" >> /usr/bin/post-apt-run
-    echo "        elif [[ \$dahdi_kmod_pres -eq 0 ]]; then" >> /usr/bin/post-apt-run
-    echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver\"" >> /usr/bin/post-apt-run
-    echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
-    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&" >> /usr/bin/post-apt-run
-    echo "        elif [[ \$wanpipe_kmod_pres -eq 0 ]];then" >> /usr/bin/post-apt-run
-    echo "            logger \"Upgrading kmod-wanpipe-\$kernel_ver\"" >> /usr/bin/post-apt-run
-    echo "            echo \"Please wait for approx 2 min once apt command execution is completed as kmod-wanpipe-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
-    echo "            apt -y upgrade kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&" >> /usr/bin/post-apt-run
-    echo "        fi" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "        break" >> /usr/bin/post-apt-run
-    echo "    done" >> /usr/bin/post-apt-run
-    echo "else" >> /usr/bin/post-apt-run
-    echo "    logger \"Dahdi / wanpipe is not present therefore, not checking for dahdi / wanpipe kmod upgrade\"" >> /usr/bin/post-apt-run
-    echo "fi" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "if [ -e "/var/www/html/index.html" ]; then" >> /usr/bin/post-apt-run
-    echo "    rm -rf /var/www/html/index.html" >> /usr/bin/post-apt-run
-    echo "fi" >> /usr/bin/post-apt-run
+    {
+        echo "#!/bin/bash"
+        echo ""
+        echo "kernel_idx=\$(grep GRUB_DEFAULT /etc/default/grub | cut -d '=' -f 2)"
+        echo "kernel_pres=\$(sed -n '/^menuentry/,/}/p' /boot/grub/grub.cfg  | grep -o -P 'vmlinuz-\S+')"
+        echo ""
+        echo "dahdi_pres=\$(dpkg -l | grep dahdi-linux | wc -l)"
+        echo ""
+        echo "if [[ \$dahdi_pres -gt 0 ]]; then"
+        echo "    idx=0"
+        echo "    for kernel in \$kernel_pres; do"
+        echo "        if [[ \$idx -ne \$kernel_idx ]]; then"
+        echo "            idx=\$((idx+1))"
+        echo "            continue"
+        echo "        fi"
+        echo ""
+        echo "        kernel_ver=\$(echo \$kernel | sed -n -e 's/vmlinuz-\([[:digit:].-]*\).*/\\1/' -e 's/-$//p')"
+        echo "        logger \"Checking kernel modules for dahdi and wanpipe for kernel image \$kernel_ver\""
+        echo ""
+        echo "        #check if dahdi is installed or not of respective kernel version"
+        echo "        dahdi_kmod_pres=\$(dpkg -l | grep dahdi-linux-kmod | grep \$kernel_ver | wc -l)"
+        echo "        wanpipe_kmod_pres=\$(dpkg -l | grep kmod-wanpipe | grep \$kernel_ver | wc -l)"
+        echo ""
+        echo "        if [[ \$dahdi_kmod_pres -eq 0 ]] && [[ \$wanpipe_kmod_pres -eq 0 ]]; then"
+        echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver and kmod-wanpipe-\$kernel_ver\""
+        echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver update in progress\""
+        echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&"
+        echo "        elif [[ \$dahdi_kmod_pres -eq 0 ]]; then"
+        echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver\""
+        echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver update in progress\""
+        echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&"
+        echo "        elif [[ \$wanpipe_kmod_pres -eq 0 ]];then"
+        echo "            logger \"Upgrading kmod-wanpipe-\$kernel_ver\""
+        echo "            echo \"Please wait for approx 2 min once apt command execution is completed as kmod-wanpipe-\$kernel_ver update in progress\""
+        echo "            apt -y upgrade kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&"
+        echo "        fi"
+        echo ""
+        echo "        break"
+        echo "    done"
+        echo "else"
+        echo "    logger \"Dahdi / wanpipe is not present therefore, not checking for dahdi / wanpipe kmod upgrade\""
+        echo "fi"
+        echo ""
+        echo "if [ -e "/var/www/html/index.html" ]; then"
+        echo "    rm -rf /var/www/html/index.html"
+        echo "fi"
+    } >> /usr/bin/post-apt-run
 
     #Changing file permission to run script
     chmod 755 /usr/bin/post-apt-run
@@ -381,99 +378,101 @@ check_kernel_compatibility() {
     fi
 
     message "Creating kernel check script to allow proper kernel upgrades"
-    create_kernel_script "#!/bin/bash"
-    create_kernel_script ""
-    create_kernel_script "curr_kernel_version=\"\""
-    create_kernel_script "supported_kernel_version=\"\""
-    create_kernel_script ""
+    {
+        echo "#!/bin/bash"
+        echo ""
+        echo "curr_kernel_version=\"\""
+        echo "supported_kernel_version=\"\""
+        echo ""
 
-    create_kernel_script "set_supported_kernel_version() {"
-    create_kernel_script "    local latest_dahdi_supported_version=\$(apt-cache search dahdi | grep -E \"^dahdi-linux-kmod-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$4,-\$5}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
-    create_kernel_script "    local latest_wanpipe_supported_version=\$(apt-cache search wanpipe | grep -E \"^kmod-wanpipe-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
-    create_kernel_script "    curr_kernel_version=\`apt-cache show linux-headers-\$(uname -r) | sed -n -e 's/Package: linux-headers-\([[:digit:].-]*\).*/\1/' -e 's/-$//p' | uniq\`"
-    create_kernel_script ""
-    create_kernel_script "    if dpkg --compare-versions \"\$latest_dahdi_supported_version\" \"eq\" \"\$latest_wanpipe_supported_version\"; then"
-    create_kernel_script "        supported_kernel_version=\$latest_dahdi_supported_version"
-    create_kernel_script "    else"
-    create_kernel_script "        supported_kernel_version=\"6.1.0-21\""
-    create_kernel_script "    fi"
-    create_kernel_script "}"
-    create_kernel_script ""
+        echo "set_supported_kernel_version() {"
+        echo "    local latest_dahdi_supported_version=\$(apt-cache search dahdi | grep -E \"^dahdi-linux-kmod-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$4,-\$5}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
+        echo "    local latest_wanpipe_supported_version=\$(apt-cache search wanpipe | grep -E \"^kmod-wanpipe-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
+        echo "    curr_kernel_version=\`apt-cache show linux-headers-\$(uname -r) | sed -n -e 's/Package: linux-headers-\([[:digit:].-]*\).*/\1/' -e 's/-$//p' | uniq\`"
+        echo ""
+        echo "    if dpkg --compare-versions \"\$latest_dahdi_supported_version\" \"eq\" \"\$latest_wanpipe_supported_version\"; then"
+        echo "        supported_kernel_version=\$latest_dahdi_supported_version"
+        echo "    else"
+        echo "        supported_kernel_version=\"6.1.0-21\""
+        echo "    fi"
+        echo "}"
+        echo ""
 
-    create_kernel_script "check_and_unblock_kernel() {"
-    create_kernel_script "    local kernel_packages=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}')"
-    create_kernel_script ""
-    create_kernel_script "    if [[ \"w\$1\" != \"w\" ]]; then"
-    create_kernel_script "        # Compare the version with the current supported kernel version"
-    create_kernel_script "        if dpkg --compare-versions \"\$1\" \"le\" \"\$supported_kernel_version\"; then"
-    create_kernel_script "            local is_on_hold=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}' | grep -w \"\$1\" | wc -l )"
-    create_kernel_script ""
-    create_kernel_script "            if [[ \$is_on_hold -gt 0 ]]; then"
-    create_kernel_script "                logger \"Un-Holding kernel version \$version to allow automatic updates.\""
-    create_kernel_script "                apt-mark unhold \"\$version\" >> /dev/null 2>&1"
-    create_kernel_script "            fi"
-    create_kernel_script "        fi"
-    create_kernel_script "        return"
-    create_kernel_script "    fi"
-    create_kernel_script ""
-    create_kernel_script "    for package in \$kernel_packages; do"
-    create_kernel_script "        # Extract the version from the package name"
-    create_kernel_script "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
-    create_kernel_script ""
-    create_kernel_script "        # Compare the version with the current supported kernel version"
-    create_kernel_script "        if dpkg --compare-versions \"\$version\" \"le\" \"\$supported_kernel_version\"; then"
-    create_kernel_script "            logger \"Un-Holding kernel version \$version to allow automatic updates.\""
-    create_kernel_script "            apt-mark unhold \"\$version\" >> /dev/null 2>&1"
-    create_kernel_script "        fi"
-    create_kernel_script "    done"
-    create_kernel_script "}"
+        echo "check_and_unblock_kernel() {"
+        echo "    local kernel_packages=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}')"
+        echo ""
+        echo "    if [[ \"w\$1\" != \"w\" ]]; then"
+        echo "        # Compare the version with the current supported kernel version"
+        echo "        if dpkg --compare-versions \"\$1\" \"le\" \"\$supported_kernel_version\"; then"
+        echo "            local is_on_hold=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}' | grep -w \"\$1\" | wc -l )"
+        echo ""
+        echo "            if [[ \$is_on_hold -gt 0 ]]; then"
+        echo "                logger \"Un-Holding kernel version \$version to allow automatic updates.\""
+        echo "                apt-mark unhold \"\$version\" >> /dev/null 2>&1"
+        echo "            fi"
+        echo "        fi"
+        echo "        return"
+        echo "    fi"
+        echo ""
+        echo "    for package in \$kernel_packages; do"
+        echo "        # Extract the version from the package name"
+        echo "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
+        echo ""
+        echo "        # Compare the version with the current supported kernel version"
+        echo "        if dpkg --compare-versions \"\$version\" \"le\" \"\$supported_kernel_version\"; then"
+        echo "            logger \"Un-Holding kernel version \$version to allow automatic updates.\""
+        echo "            apt-mark unhold \"\$version\" >> /dev/null 2>&1"
+        echo "        fi"
+        echo "    done"
+        echo "}"
 
-    create_kernel_script ""
-    create_kernel_script "check_and_block_kernel() {"
-    create_kernel_script "    if dpkg --compare-versions \"\$curr_kernel_version\" \"gt\" \"\$supported_kernel_version\"; then"
-    create_kernel_script "        logger \"Aborting as detected kernel version is not supported by freepbx dahdi module\""
-    create_kernel_script "    fi"
-    create_kernel_script ""
+        echo ""
+        echo "check_and_block_kernel() {"
+        echo "    if dpkg --compare-versions \"\$curr_kernel_version\" \"gt\" \"\$supported_kernel_version\"; then"
+        echo "        logger \"Aborting as detected kernel version is not supported by freepbx dahdi module\""
+        echo "    fi"
+        echo ""
 
-    create_kernel_script "    local kernel_packages=\$( apt-cache search linux-image | grep -E "^linux-image-[0-9]" | awk '{print \$1}')"
-    create_kernel_script "    for package in \$kernel_packages; do"
-    create_kernel_script "        # Extract the version from the package name"
-    create_kernel_script "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
-    create_kernel_script ""
+        echo "    local kernel_packages=\$( apt-cache search linux-image | grep -E "^linux-image-[0-9]" | awk '{print \$1}')"
+        echo "    for package in \$kernel_packages; do"
+        echo "        # Extract the version from the package name"
+        echo "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
+        echo ""
 
-    create_kernel_script "        # Compare the version with the current supported kernel version"
-    create_kernel_script "        if dpkg --compare-versions \"\$version\" \"gt\" \"\$supported_kernel_version\"; then"
-    create_kernel_script "            logger \"Holding kernel version \$version to prevent automatic updates.\""
-    create_kernel_script "            apt-mark hold \"\$version\" >> /dev/null 2>&1"
-    create_kernel_script "        else"
-    create_kernel_script "            check_and_unblock_kernel \$version"
-    create_kernel_script "        fi"
-    create_kernel_script "    done"
-    create_kernel_script "}"
+        echo "        # Compare the version with the current supported kernel version"
+        echo "        if dpkg --compare-versions \"\$version\" \"gt\" \"\$supported_kernel_version\"; then"
+        echo "            logger \"Holding kernel version \$version to prevent automatic updates.\""
+        echo "            apt-mark hold \"\$version\" >> /dev/null 2>&1"
+        echo "        else"
+        echo "            check_and_unblock_kernel \$version"
+        echo "        fi"
+        echo "    done"
+        echo "}"
 
-    create_kernel_script ""
-    create_kernel_script "case \$1 in"
-    create_kernel_script "    --hold)"
-    create_kernel_script "        hold=true"
-    create_kernel_script "        ;;"
-    create_kernel_script ""
-    create_kernel_script "    --unhold)"
-    create_kernel_script "        unhold=true"
-    create_kernel_script "        ;;"
-    create_kernel_script ""
-    create_kernel_script "    *)"
-    create_kernel_script "        logger \"Unknown / Invalid option \$1\""
-    create_kernel_script "        exit 1"
-    create_kernel_script "        ;;"
-    create_kernel_script "esac"
-    create_kernel_script ""
-    create_kernel_script "set_supported_kernel_version"
-    create_kernel_script ""
-    create_kernel_script "if [[ \$hold ]]; then"
-    create_kernel_script "    check_and_block_kernel"
-    create_kernel_script "elif [[ \$unhold ]]; then"
-    create_kernel_script "    check_and_unblock_kernel"
-    create_kernel_script "fi"
+        echo ""
+        echo "case \$1 in"
+        echo "    --hold)"
+        echo "        hold=true"
+        echo "        ;;"
+        echo ""
+        echo "    --unhold)"
+        echo "        unhold=true"
+        echo "        ;;"
+        echo ""
+        echo "    *)"
+        echo "        logger \"Unknown / Invalid option \$1\""
+        echo "        exit 1"
+        echo "        ;;"
+        echo "esac"
+        echo ""
+        echo "set_supported_kernel_version"
+        echo ""
+        echo "if [[ \$hold ]]; then"
+        echo "    check_and_block_kernel"
+        echo "elif [[ \$unhold ]]; then"
+        echo "    check_and_unblock_kernel"
+        echo "fi"
+    } >> /usr/bin/kernel-check
 
     #Changing file permission to run script
     chmod 755 /usr/bin/kernel-check
