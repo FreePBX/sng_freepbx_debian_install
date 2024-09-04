@@ -21,25 +21,14 @@
 #####################################################################################
 #                                               FreePBX 17                          #
 #####################################################################################
-if ! grep -Fxq 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' /root/.bashrc; then
-  echo 'export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' >> /root/.bashrc
-  export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-fi
 set -e
-if ! dpkg -l | grep -q lsb-release >> /dev/null 2>&1 ; then
-    apt install -y lsb-release >> /dev/null 2>&1
-fi
-if ! dpkg -l | grep -q wget >> /dev/null 2>&1; then
-    apt install -y wget >> /dev/null 2>&1
-fi
-SCRIPTVER="1.7"
+SCRIPTVER="1.10"
 ASTVERSION=21
-AACVERSION="2.0.1-1"
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
-DISTRIBUTION="$(lsb_release -is)"
 log=$LOG_FILE
+SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
@@ -47,11 +36,71 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-mkdir -p "${LOG_FOLDER}"
-echo "" > $log
+# Setup a sane PATH for script execution as root
+if ! grep -q "export PATH=$SANE_PATH" /root/.bashrc; then
+  echo "export PATH=$SANE_PATH" >> /root/.bashrc
+  export PATH=$SANE_PATH
+fi
 
-# Get parameters
-POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+	case $1 in
+		--testing)
+			testrepo=true
+			shift # past argument
+			;;
+		--nofreepbx)
+			nofpbx=true
+			shift # past argument
+			;;
+		--noasterisk)
+			noast=true
+			shift # past argument
+			;;
+		--opensourceonly)
+			opensourceonly=true
+			shift # past argument
+			;;
+		--noioncube)
+			noioncube=true
+			shift # past argument
+			;;
+		--noaac)
+			noaac=true
+			shift # past argument
+			;;
+		--skipversion)
+			skipversion=true
+			shift # past argument
+			;;
+		--dahdi)
+			dahdi=true
+			shift # past argument
+			;;
+		--dahdi-only)
+			nofpbx=true
+			noast=true
+			noioncube=true
+			noaac=true
+			dahdi=true
+			shift # past argument
+			;;
+		-*)
+			echo "Unknown option $1"
+			exit 1
+			;;
+		*)
+			echo "Unknown argument \"$1\""
+			exit 1
+			;;
+	esac
+done
+
+# Create the log file
+mkdir -p "${LOG_FOLDER}"
+touch "${LOG_FILE}"
+
+# Redirect stderr to the log file
+exec 2>>"${LOG_FILE}"
 
 #Comparing version
 compare_version() {
@@ -102,71 +151,6 @@ check_version() {
             ;;
         esac
 }
-while [[ $# -gt 0 ]]; do
-	case $1 in
-		--dev)
-			dev=true
-			shift # past argument
-			;;
-		--testing)
-			testrepo=true
-			shift # past argument
-			;;
-		--nofreepbx)
-			nofpbx=true
-			shift # past argument
-			;;
-		--noasterisk)
-			noast=true
-			shift # past argument
-			;;
-		--opensourceonly)
-			opensourceonly=true
-			shift # past argument
-			;;
-		--noioncube)
-			noioncube=true
-			shift # past argument
-			;;
-
-                --skipversion)
-                        skipversion=true
-                        shift # past argument
-                        ;;
-		--dahdi)
-                        dahdi=true
-                        shift # past argument
-                        ;;
-	        --dahdi-only)
-			skipversion=true
-                        nofpbx=true
-                        noast=true
-                        noioncube=true
-                        dahdi=true
-                        shift # past argument
-                        ;;
-		-*|--*)
-			echo "Unknown option $1"
-			exit 1
-			;;
-		*)
-			POSITIONAL_ARGS+=("$1") # save positional arg
-			shift # past argument
-			;;
-	esac
-done
-
-if [[ $skipversion ]]; then
-    echo "Skipping version check..."
-else
-    # Perform version check if --skipversion is not provided
-    echo "Performing version check..."
-    check_version
-fi
-
-
-#Helpers APIs
-exec 2>>${LOG_FILE}
 
 # Function to log messages
 log() {
@@ -201,7 +185,7 @@ errorHandler() {
 
 # Checking if the package is already installed or not
 isinstalled() {
-	PKG_OK=$(/usr/bin/dpkg-query -W --showformat='${Status}\n' "$@" 2>/dev/null|grep "install ok installed")
+	PKG_OK=$(dpkg-query -W --showformat='${Status}\n' "$@" 2>/dev/null|grep "install ok installed")
 	if [ "" = "$PKG_OK" ]; then
 		false
 	else
@@ -217,7 +201,7 @@ pkg_install() {
 		log "$PKG already present ...."
 	else
 		message "Installing $PKG ...."
-		apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install $PKG >> $log 2>&1
+		apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install $PKG >> $log
 		if isinstalled $PKG; then
 			message "$PKG installed successfully...."
 		else
@@ -227,22 +211,6 @@ pkg_install() {
 		fi
 	fi
 	log "############################### "
-}
-
-# Function to install the libfdk-aac
-install_libfdk() {
-      if isinstalled libfdk-aac2; then
-            log "libfdk-aac2 already installed ...."
-      else
-            message "Installing libfdk-aac2...."
-            apt-get install -y libfdk-aac2 >> "$log" 2>&1
-      if isinstalled libfdk-aac2; then
-            message "libfdk-aac2 installed successfully....."
-      else
-            message "libfdk-aac2 failed to install ...."
-            exit 1
-      fi
-fi
 }
 
 # Function to install the asterisk and dependent packages
@@ -283,105 +251,102 @@ install_asterisk() {
 }
 
 setup_repositories() {
-	#Add PHP repository
-	wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
-	if [ "${DISTRIBUTION}" = "Ubuntu" ]; then
-	    add-apt-repository -y "ppa:ondrej/php" >> "$log" 2>&1
-	    add-apt-repository -y "ppa:ondrej/apache2" >> "$log" 2>&1
-	else
-		add-apt-repository -y -S "deb [ arch=${arch} ] https://packages.sury.org/php/ $(lsb_release -sc) main" >> "$log" 2>&1
-	fi
+	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log"
 
-	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log" 2>&1
-
-	wget -qO - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log" 2>&1
+	wget -qO - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
 
 	# Setting our default repo server
 	if [ $testrepo ] ; then
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
 	else
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
 	fi
 
-      add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log" 2>&1
+	if [ ! $noaac ] ; then
+		add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log"
+	fi
 
 	setCurrentStep "Setting up Sangoma repository"
-cat <<EOF> /etc/apt/preferences.d/99sangoma-fpbx-repository
-# Allways prefer packages from deb.freepbx.org
-
+    local aptpref="/etc/apt/preferences.d/99sangoma-fpbx-repository"
+    cat <<EOF> $aptpref
 Package: *
 Pin: origin deb.freepbx.org
 Pin-Priority: ${MIRROR_PRIO}
 EOF
-}
+    if [ $noaac ]; then
+    cat <<EOF>> $aptpref
 
-create_kernel_script() {
-    echo "$1" >> /usr/bin/kernel-check
+Package: ffmpeg
+Pin: origin deb.freepbx.org
+Pin-Priority: 1
+EOF
+    fi
 }
 
 #create post apt run script to run and check everything apt command is finished executing
 create_post_apt_script() {
     #checking post-apt-run script
     if [ -e "/usr/bin/post-apt-run" ]; then
-        rm -rf /usr/bin/post-apt-run
+        rm -f /usr/bin/post-apt-run
     fi
 
     message "Creating script to run post every apt command is finished executing"
-
-    echo "#!/bin/bash" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "kernel_idx=\$(grep GRUB_DEFAULT /etc/default/grub | cut -d '=' -f 2)" >> /usr/bin/post-apt-run
-    echo "kernel_pres=\$(sed -n '/^menuentry/,/}/p' /boot/grub/grub.cfg  | grep -o -P 'vmlinuz-\S+')" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "dahdi_pres=\$(dpkg -l | grep dahdi-linux | wc -l)" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "if [[ \$dahdi_pres -gt 0 ]]; then" >> /usr/bin/post-apt-run
-    echo "    idx=0" >> /usr/bin/post-apt-run
-    echo "    for kernel in \$kernel_pres; do" >> /usr/bin/post-apt-run
-    echo "        if [[ \$idx -ne \$kernel_idx ]]; then" >> /usr/bin/post-apt-run
-    echo "            idx=\$((idx+1))" >> /usr/bin/post-apt-run
-    echo "            continue" >> /usr/bin/post-apt-run
-    echo "        fi" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "        kernel_ver=\$(echo \$kernel | sed -n -e 's/vmlinuz-\([[:digit:].-]*\).*/\\1/' -e 's/-$//p')" >> /usr/bin/post-apt-run
-    echo "        logger \"Checking kernel modules for dahdi and wanpipe for kernel image \$kernel_ver\"" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "        #check if dahdi is installed or not of respective kernel version" >> /usr/bin/post-apt-run
-    echo "        dahdi_kmod_pres=\$(dpkg -l | grep dahdi-linux-kmod | grep \$kernel_ver | wc -l)" >> /usr/bin/post-apt-run
-    echo "        wanpipe_kmod_pres=\$(dpkg -l | grep kmod-wanpipe | grep \$kernel_ver | wc -l)" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "        if [[ \$dahdi_kmod_pres -eq 0 ]] && [[ \$wanpipe_kmod_pres -eq 0 ]]; then" >> /usr/bin/post-apt-run
-    echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver and kmod-wanpipe-\$kernel_ver\"" >> /usr/bin/post-apt-run
-    echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
-    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&" >> /usr/bin/post-apt-run
-    echo "        elif [[ \$dahdi_kmod_pres -eq 0 ]]; then" >> /usr/bin/post-apt-run
-    echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver\"" >> /usr/bin/post-apt-run
-    echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
-    echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&" >> /usr/bin/post-apt-run
-    echo "        elif [[ \$wanpipe_kmod_pres -eq 0 ]];then" >> /usr/bin/post-apt-run
-    echo "            logger \"Upgrading kmod-wanpipe-\$kernel_ver\"" >> /usr/bin/post-apt-run
-    echo "            echo \"Please wait for approx 2 min once apt command execution is completed as kmod-wanpipe-\$kernel_ver update in progress\"" >> /usr/bin/post-apt-run
-    echo "            apt -y upgrade kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&" >> /usr/bin/post-apt-run
-    echo "        fi" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "        break" >> /usr/bin/post-apt-run
-    echo "    done" >> /usr/bin/post-apt-run
-    echo "else" >> /usr/bin/post-apt-run
-    echo "    logger \"Dahdi / wanpipe is not present therefore, not checking for dahdi / wanpipe kmod upgrade\"" >> /usr/bin/post-apt-run
-    echo "fi" >> /usr/bin/post-apt-run
-    echo "" >> /usr/bin/post-apt-run
-    echo "if [ -e "/var/www/html/index.html" ]; then" >> /usr/bin/post-apt-run
-    echo "    rm -rf /var/www/html/index.html" >> /usr/bin/post-apt-run
-    echo "fi" >> /usr/bin/post-apt-run
+    {
+        echo "#!/bin/bash"
+        echo ""
+        echo "kernel_idx=\$(grep GRUB_DEFAULT /etc/default/grub | cut -d '=' -f 2)"
+        echo "kernel_pres=\$(sed -n '/^menuentry/,/}/p' /boot/grub/grub.cfg  | grep -o -P 'vmlinuz-\S+')"
+        echo ""
+        echo "dahdi_pres=\$(dpkg -l | grep dahdi-linux | wc -l)"
+        echo ""
+        echo "if [[ \$dahdi_pres -gt 0 ]]; then"
+        echo "    idx=0"
+        echo "    for kernel in \$kernel_pres; do"
+        echo "        if [[ \$idx -ne \$kernel_idx ]]; then"
+        echo "            idx=\$((idx+1))"
+        echo "            continue"
+        echo "        fi"
+        echo ""
+        echo "        kernel_ver=\$(echo \$kernel | sed -n -e 's/vmlinuz-\([[:digit:].-]*\).*/\\1/' -e 's/-$//p')"
+        echo "        logger \"Checking kernel modules for dahdi and wanpipe for kernel image \$kernel_ver\""
+        echo ""
+        echo "        #check if dahdi is installed or not of respective kernel version"
+        echo "        dahdi_kmod_pres=\$(dpkg -l | grep dahdi-linux-kmod | grep \$kernel_ver | wc -l)"
+        echo "        wanpipe_kmod_pres=\$(dpkg -l | grep kmod-wanpipe | grep \$kernel_ver | wc -l)"
+        echo ""
+        echo "        if [[ \$dahdi_kmod_pres -eq 0 ]] && [[ \$wanpipe_kmod_pres -eq 0 ]]; then"
+        echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver and kmod-wanpipe-\$kernel_ver\""
+        echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver update in progress\""
+        echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&"
+        echo "        elif [[ \$dahdi_kmod_pres -eq 0 ]]; then"
+        echo "            logger \"Upgrading dahdi-linux-kmod-\$kernel_ver\""
+        echo "            echo \"Please wait for approx 2 min once apt command execution is completed as dahdi-linux-kmod-\$kernel_ver update in progress\""
+        echo "            apt -y upgrade dahdi-linux-kmod-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&"
+        echo "        elif [[ \$wanpipe_kmod_pres -eq 0 ]];then"
+        echo "            logger \"Upgrading kmod-wanpipe-\$kernel_ver\""
+        echo "            echo \"Please wait for approx 2 min once apt command execution is completed as kmod-wanpipe-\$kernel_ver update in progress\""
+        echo "            apt -y upgrade kmod-wanpipe-\$kernel_ver > /dev/null 2>&1 | at now +1 minute&"
+        echo "        fi"
+        echo ""
+        echo "        break"
+        echo "    done"
+        echo "else"
+        echo "    logger \"Dahdi / wanpipe is not present therefore, not checking for dahdi / wanpipe kmod upgrade\""
+        echo "fi"
+        echo ""
+        echo "if [ -e "/var/www/html/index.html" ]; then"
+        echo "    rm -f /var/www/html/index.html"
+        echo "fi"
+    } >> /usr/bin/post-apt-run
 
     #Changing file permission to run script
     chmod 755 /usr/bin/post-apt-run
 
     #Adding Post Invoke for Update to run kernel-check
     if [ -e "/etc/apt/apt.conf.d/80postaptcmd" ]; then
-        rm -rf /etc/apt/apt.conf.d/80postaptcmd
+        rm -f /etc/apt/apt.conf.d/80postaptcmd
     fi
 
     echo "DPkg::Post-Invoke {\"/usr/bin/post-apt-run\";};" >> /etc/apt/apt.conf.d/80postaptcmd
@@ -405,7 +370,7 @@ check_kernel_compatibility() {
     fi
 
     if [ -e "/usr/bin/kernel-check" ]; then
-        rm -rf /usr/bin/kernel-check
+        rm -f /usr/bin/kernel-check
     fi
 
     if [ $testrepo ]; then
@@ -414,121 +379,124 @@ check_kernel_compatibility() {
     fi
 
     message "Creating kernel check script to allow proper kernel upgrades"
-    create_kernel_script "#!/bin/bash"
-    create_kernel_script ""
-    create_kernel_script "curr_kernel_version=\"\""
-    create_kernel_script "supported_kernel_version=\"\""
-    create_kernel_script ""
+    {
+        echo "#!/bin/bash"
+        echo ""
+        echo "curr_kernel_version=\"\""
+        echo "supported_kernel_version=\"\""
+        echo ""
 
-    create_kernel_script "set_supported_kernel_version() {"
-    create_kernel_script "    local latest_dahdi_supported_version=\$(apt-cache search dahdi | grep -E \"^dahdi-linux-kmod-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$4,-\$5}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
-    create_kernel_script "    local latest_wanpipe_supported_version=\$(apt-cache search wanpipe | grep -E \"^kmod-wanpipe-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
-    create_kernel_script "    curr_kernel_version=\`apt-cache show linux-headers-\$(uname -r) | sed -n -e 's/Package: linux-headers-\([[:digit:].-]*\).*/\1/' -e 's/-$//p' | uniq\`"
-    create_kernel_script ""
-    create_kernel_script "    if dpkg --compare-versions \"\$latest_dahdi_supported_version\" \"eq\" \"\$latest_wanpipe_supported_version\"; then"
-    create_kernel_script "        supported_kernel_version=\$latest_dahdi_supported_version"
-    create_kernel_script "    else"
-    create_kernel_script "        supported_kernel_version=\"6.1.0-21\""
-    create_kernel_script "    fi"
-    create_kernel_script "}"
-    create_kernel_script ""
+        echo "set_supported_kernel_version() {"
+        echo "    local latest_dahdi_supported_version=\$(apt-cache search dahdi | grep -E \"^dahdi-linux-kmod-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$4,-\$5}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
+        echo "    local latest_wanpipe_supported_version=\$(apt-cache search wanpipe | grep -E \"^kmod-wanpipe-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
+        echo "    curr_kernel_version=\`apt-cache show linux-headers-\$(uname -r) | sed -n -e 's/Package: linux-headers-\([[:digit:].-]*\).*/\1/' -e 's/-$//p' | uniq\`"
+        echo ""
+        echo "    if dpkg --compare-versions \"\$latest_dahdi_supported_version\" \"eq\" \"\$latest_wanpipe_supported_version\"; then"
+        echo "        supported_kernel_version=\$latest_dahdi_supported_version"
+        echo "    else"
+        echo "        supported_kernel_version=\"6.1.0-21\""
+        echo "    fi"
+        echo "}"
+        echo ""
 
-    create_kernel_script "check_and_unblock_kernel() {"
-    create_kernel_script "    local kernel_packages=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}')"
-    create_kernel_script ""
-    create_kernel_script "    if [[ \"w\$1\" != \"w\" ]]; then"
-    create_kernel_script "        # Compare the version with the current supported kernel version"
-    create_kernel_script "        if dpkg --compare-versions \"\$1\" \"le\" \"\$supported_kernel_version\"; then"
-    create_kernel_script "            local is_on_hold=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}' | grep -w \"\$1\" | wc -l )"
-    create_kernel_script ""
-    create_kernel_script "            if [[ \$is_on_hold -gt 0 ]]; then"
-    create_kernel_script "                logger \"Un-Holding kernel version \$version to allow automatic updates.\""
-    create_kernel_script "                apt-mark unhold \"\$version\" >> /dev/null 2>&1"
-    create_kernel_script "            fi"
-    create_kernel_script "        fi"
-    create_kernel_script "        return"
-    create_kernel_script "    fi"
-    create_kernel_script ""
-    create_kernel_script "    for package in \$kernel_packages; do"
-    create_kernel_script "        # Extract the version from the package name"
-    create_kernel_script "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
-    create_kernel_script ""
-    create_kernel_script "        # Compare the version with the current supported kernel version"
-    create_kernel_script "        if dpkg --compare-versions \"\$version\" \"le\" \"\$supported_kernel_version\"; then"
-    create_kernel_script "            logger \"Un-Holding kernel version \$version to allow automatic updates.\""
-    create_kernel_script "            apt-mark unhold \"\$version\" >> /dev/null 2>&1"
-    create_kernel_script "        fi"
-    create_kernel_script "    done"
-    create_kernel_script "}"
+        echo "check_and_unblock_kernel() {"
+        echo "    local kernel_packages=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}')"
+        echo ""
+        echo "    if [[ \"w\$1\" != \"w\" ]]; then"
+        echo "        # Compare the version with the current supported kernel version"
+        echo "        if dpkg --compare-versions \"\$1\" \"le\" \"\$supported_kernel_version\"; then"
+        echo "            local is_on_hold=\$(apt-mark showhold | grep -E ^linux-image-[0-9] | awk '{print \$1}' | grep -w \"\$1\" | wc -l )"
+        echo ""
+        echo "            if [[ \$is_on_hold -gt 0 ]]; then"
+        echo "                logger \"Un-Holding kernel version \$version to allow automatic updates.\""
+        echo "                apt-mark unhold \"\$version\" >> /dev/null 2>&1"
+        echo "            fi"
+        echo "        fi"
+        echo "        return"
+        echo "    fi"
+        echo ""
+        echo "    for package in \$kernel_packages; do"
+        echo "        # Extract the version from the package name"
+        echo "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
+        echo ""
+        echo "        # Compare the version with the current supported kernel version"
+        echo "        if dpkg --compare-versions \"\$version\" \"le\" \"\$supported_kernel_version\"; then"
+        echo "            logger \"Un-Holding kernel version \$version to allow automatic updates.\""
+        echo "            apt-mark unhold \"\$version\" >> /dev/null 2>&1"
+        echo "        fi"
+        echo "    done"
+        echo "}"
 
-    create_kernel_script ""
-    create_kernel_script "check_and_block_kernel() {"
-    create_kernel_script "    if dpkg --compare-versions \"\$curr_kernel_version\" \"gt\" \"\$supported_kernel_version\"; then"
-    create_kernel_script "        logger \"Aborting as detected kernel version is not supported by freepbx dahdi module\""
-    create_kernel_script "    fi"
-    create_kernel_script ""
+        echo ""
+        echo "check_and_block_kernel() {"
+        echo "    if dpkg --compare-versions \"\$curr_kernel_version\" \"gt\" \"\$supported_kernel_version\"; then"
+        echo "        logger \"Aborting as detected kernel version is not supported by freepbx dahdi module\""
+        echo "    fi"
+        echo ""
 
-    create_kernel_script "    local kernel_packages=\$( apt-cache search linux-image | grep -E "^linux-image-[0-9]" | awk '{print \$1}')"
-    create_kernel_script "    for package in \$kernel_packages; do"
-    create_kernel_script "        # Extract the version from the package name"
-    create_kernel_script "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
-    create_kernel_script ""
+        echo "    local kernel_packages=\$( apt-cache search linux-image | grep -E "^linux-image-[0-9]" | awk '{print \$1}')"
+        echo "    for package in \$kernel_packages; do"
+        echo "        # Extract the version from the package name"
+        echo "        local version=\$(echo \"\$package\" | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n)"
+        echo ""
 
-    create_kernel_script "        # Compare the version with the current supported kernel version"
-    create_kernel_script "        if dpkg --compare-versions \"\$version\" \"gt\" \"\$supported_kernel_version\"; then"
-    create_kernel_script "            logger \"Holding kernel version \$version to prevent automatic updates.\""
-    create_kernel_script "            apt-mark hold \"\$version\" >> /dev/null 2>&1"
-    create_kernel_script "        else"
-    create_kernel_script "            check_and_unblock_kernel \$version"
-    create_kernel_script "        fi"
-    create_kernel_script "    done"
-    create_kernel_script "}"
+        echo "        # Compare the version with the current supported kernel version"
+        echo "        if dpkg --compare-versions \"\$version\" \"gt\" \"\$supported_kernel_version\"; then"
+        echo "            logger \"Holding kernel version \$version to prevent automatic updates.\""
+        echo "            apt-mark hold \"\$version\" >> /dev/null 2>&1"
+        echo "        else"
+        echo "            check_and_unblock_kernel \$version"
+        echo "        fi"
+        echo "    done"
+        echo "}"
 
-    create_kernel_script ""
-    create_kernel_script "case \$1 in"
-    create_kernel_script "    --hold)"
-    create_kernel_script "        hold=true"
-    create_kernel_script "        ;;"
-    create_kernel_script ""
-    create_kernel_script "    --unhold)"
-    create_kernel_script "        unhold=true"
-    create_kernel_script "        ;;"
-    create_kernel_script ""
-    create_kernel_script "    *)"
-    create_kernel_script "        logger \"Unknown / Invalid option \$1\""
-    create_kernel_script "        exit 1"
-    create_kernel_script "        ;;"
-    create_kernel_script "esac"
-    create_kernel_script ""
-    create_kernel_script "set_supported_kernel_version"
-    create_kernel_script ""
-    create_kernel_script "if [[ \$hold ]]; then"
-    create_kernel_script "    check_and_block_kernel"
-    create_kernel_script "elif [[ \$unhold ]]; then"
-    create_kernel_script "    check_and_unblock_kernel"
-    create_kernel_script "fi"
+        echo ""
+        echo "case \$1 in"
+        echo "    --hold)"
+        echo "        hold=true"
+        echo "        ;;"
+        echo ""
+        echo "    --unhold)"
+        echo "        unhold=true"
+        echo "        ;;"
+        echo ""
+        echo "    *)"
+        echo "        logger \"Unknown / Invalid option \$1\""
+        echo "        exit 1"
+        echo "        ;;"
+        echo "esac"
+        echo ""
+        echo "set_supported_kernel_version"
+        echo ""
+        echo "if [[ \$hold ]]; then"
+        echo "    check_and_block_kernel"
+        echo "elif [[ \$unhold ]]; then"
+        echo "    check_and_unblock_kernel"
+        echo "fi"
+    } >> /usr/bin/kernel-check
 
     #Changing file permission to run script
     chmod 755 /usr/bin/kernel-check
 
     #Adding Post Invoke for Update to run kernel-check
     if [ -e "/etc/apt/apt.conf.d/05checkkernel" ]; then
-        rm -rf /etc/apt/apt.conf.d/05checkkernel
+        rm -f /etc/apt/apt.conf.d/05checkkernel
     fi
     echo "APT::Update::Post-Invoke {\"/usr/bin/kernel-check --hold\"}" >> /etc/apt/apt.conf.d/05checkkernel
     chmod 644 /etc/apt/apt.conf.d/05checkkernel
 }
 
 remove_commercial_modules() {
-  fwconsole ma list | grep Commercial | awk '{print $2}'  | xargs -I {} fwconsole ma -f uninstall {} >> "$log" 2>&1
-  fwconsole ma list | grep Commercial | awk '{print $2}'  | xargs -I {} fwconsole ma remove {}
-  # Remove firewall module also because that is depends on commercial sysadmin module
-  fwconsole ma uninstall firewall
-  fwconsole ma remove firewall
+  comm_modules=$(fwconsole ma list | grep Commercial | awk '{print $2}')
+  echo "$comm_modules" | xargs -I {} fwconsole ma -f uninstall {} >> "$log"
+  echo "$comm_modules" | xargs -I {} fwconsole ma remove {} >> "$log"
+  # Remove firewall module also because it depends on commercial sysadmin module
+  fwconsole ma uninstall firewall >> "$log"
+  fwconsole ma remove firewall >> "$log"
 }
 
 refresh_signatures() {
-  fwconsole ma refreshsignatures >> "$log" 2>&1
+  fwconsole ma refreshsignatures >> "$log"
 }
 
 check_services() {
@@ -683,10 +651,29 @@ hold_packages() {
 
 ################################################################################################################
 MIRROR_PRIO=600
-kernel=`uname -a`
-arch=`dpkg --print-architecture`
-host=`hostname`
+kernel=$(uname -a)
+host=$(hostname)
 fqdn="$(hostname -f)" || true
+
+# Install wget which is required for version check
+pkg_install wget
+
+# Script version check
+if [[ $skipversion ]]; then
+    message "Skipping version check..."
+else
+    # Perform version check if --skipversion is not provided
+    message "Performing version check..."
+    check_version
+fi
+
+# Check if we are running on a 64-bit system
+ARCH=$(dpkg --print-architecture)
+if [ "$ARCH" != "amd64" ]; then
+    message "FreePBX 17 installation can only be made on a 64-bit (amd64) system!"
+    message "Current System's Architecture: $ARCH"
+    exit 1
+fi
 
 # Check if hostname command succeeded and FQDN is not empty
 if [ -z "$fqdn" ]; then
@@ -721,10 +708,10 @@ message "  Starting FreePBX 17 installation process for $host $kernel"
 message "  Please refer to the $log to know the process..."
 log "  Executing script v$SCRIPTVER ..."
 
-setCurrentStep "Making sure installation is same"
+setCurrentStep "Making sure installation is sane"
 # Fixing broken install
-apt -y --fix-broken install >> $log 2>&1
-apt autoremove -y >> "$log" 2>&1
+apt-get -y --fix-broken install >> $log
+apt-get autoremove -y >> "$log"
 
 # Check if the CD-ROM repository is present in the sources.list file
 if grep -q "^deb cdrom" /etc/apt/sources.list; then
@@ -733,7 +720,7 @@ if grep -q "^deb cdrom" /etc/apt/sources.list; then
   message "Commented out CD-ROM repository in sources.list"
 fi
 
-apt update >> $log 2>&1
+apt-get update >> $log
 
 # Adding iptables and postfix  inputs so "iptables-persistent" and postfix will not ask for the input
 setCurrentStep "Setting up default configuration"
@@ -744,7 +731,7 @@ EOF
 echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
-# Install below packages which is required to add the repository
+# Install below packages which are required for repositories setup
 pkg_install software-properties-common
 pkg_install gnupg
 
@@ -766,13 +753,13 @@ if [ $dahdi ]; then
 fi
 
 setCurrentStep "Updating repository"
-apt update >> $log 2>&1
+apt-get update >> $log
 
 # log the apt-cache policy
-apt-cache policy  >> $log 2>&1
+apt-cache policy  >> $log
 
-# Don't start the tftp daemon automatically, as we need to change it's configuration
-systemctl mask tftpd-hpa.service
+# Don't start the tftp & chrony daemons automatically, as we need to change their configuration
+systemctl mask tftpd-hpa.service chrony.service
 
 # Install dependent packages
 setCurrentStep "Installing required packages"
@@ -921,7 +908,7 @@ fi
 
 # OpenVPN EasyRSA configuration
 if [ ! -d "/etc/openvpn/easyrsa3" ]; then
-	/usr/bin/make-cadir /etc/openvpn/easyrsa3
+	make-cadir /etc/openvpn/easyrsa3
 fi
 #Remove below files which will be generated by sysadmin later
 rm -f /etc/openvpn/easyrsa3/pki/vars || true
@@ -949,26 +936,29 @@ if [[ "$dahdi" == true ]]; then
         done
 fi
 
-# Install libfdk
-setCurrentStep "Setting up libfdk"
-install_libfdk
+# Install libfdk-aac2
+if [ $noaac ] ; then
+	message "Skipping libfdk-aac2 installation due to noaac option"
+else
+	pkg_install libfdk-aac2
+fi
 
 setCurrentStep "Removing unnecessary packages"
-apt autoremove -y >> "$log" 2>&1
+apt-get autoremove -y >> "$log"
 
-execution_time="$(($(date +%s) - $start))"
+execution_time="$(($(date +%s) - start))"
 message "Execution time to install all the dependent packages : $execution_time s"
 
 
 
 
 setCurrentStep "Setting up folders and asterisk config"
-groupExists="`getent group asterisk || echo ''`"
+groupExists="$(getent group asterisk || echo '')"
 if [ "${groupExists}" = "" ]; then
 	groupadd -r asterisk
 fi
 
-userExists="`getent passwd asterisk || echo ''`"
+userExists="$(getent passwd asterisk || echo '')"
 if [ "${userExists}" = "" ]; then
 	useradd -r -g asterisk -d /home/asterisk -M -s /bin/bash asterisk
 fi
@@ -981,13 +971,14 @@ mkdir -p /tftpboot
 chown -R asterisk:asterisk /tftpboot
 # Changing the tftp process path to tftpboot
 sed -i -e "s|^TFTP_DIRECTORY=\"/srv\/tftp\"$|TFTP_DIRECTORY=\"/tftpboot\"|" /etc/default/tftpd-hpa
-# Change the tftp options when IPv6 is not available, to allow successful execution
+# Change the tftp & chrony options when IPv6 is not available, to allow successful execution
 if [ ! -f /proc/net/if_inet6 ]; then
 	sed -i -e "s|^TFTP_OPTIONS=\"--secure\"$|TFTP_OPTIONS=\"--secure --ipv4\"|" /etc/default/tftpd-hpa
+	sed -i -e "s|^DAEMON_OPTS=\"-F 1\"$|DAEMON_OPTS=\"-F 1 -4\"|" /etc/default/chrony
 fi
-# Start the tftp daemon
-systemctl unmask tftpd-hpa.service
-systemctl start tftpd-hpa.service
+# Start the tftp & chrony daemons
+systemctl unmask tftpd-hpa.service chrony.service
+systemctl start tftpd-hpa.service chrony.service
 
 # Creating asterisk sound directory
 mkdir -p /var/lib/asterisk/sounds
@@ -1029,8 +1020,8 @@ fi
 # Setting VIM configuration for mouse copy paste
 isVimRcAdapted=$(grep "FreePBX 17 changes" /etc/vim/vimrc.local |wc -l)
 if [ "0" = "${isVimRcAdapted}" ]; then
-	VIMRUNTIME=`vim -e -T dumb --cmd 'exe "set t_cm=\<C-M>"|echo $VIMRUNTIME|quit' | tr -d '\015' `
-	VIMRUNTIME_FOLDER=`echo $VIMRUNTIME | sed 's/ //g'`
+	VIMRUNTIME=$(vim -e -T dumb --cmd 'exe "set t_cm=\<C-M>"|echo $VIMRUNTIME|quit' | tr -d '\015' )
+	VIMRUNTIME_FOLDER=$(echo $VIMRUNTIME | sed 's/ //g')
 
 	cat <<EOF >> /etc/vim/vimrc.local
 " FreePBX 17 changes - begin
@@ -1101,7 +1092,7 @@ done
 
 #Enabling freepbx.ini file
 setCurrentStep "Enabling modules."
-/usr/sbin/phpenmod freepbx
+phpenmod freepbx
 mkdir -p /var/lib/php/session
 
 #Creating default config files
@@ -1113,7 +1104,7 @@ touch /etc/asterisk/extensions_custom.conf
 chown -R asterisk:asterisk /etc/asterisk
 
 setCurrentStep "Restarting fail2ban"
-/usr/bin/systemctl restart fail2ban  >> $log
+systemctl restart fail2ban  >> $log
 
 
 if [ $nofpbx ] ; then
@@ -1124,11 +1115,11 @@ else
 
 	# Reinstalling modules to ensure all the modules are enabled/installed
   setCurrentStep "Installing Sysadmin module"
-  fwconsole ma install sysadmin >> $log 2>&1
+  fwconsole ma install sysadmin >> $log
 
   #Not installing sangoma connect result in failure of first installlocal
   setCurrentStep "Installing sangomaconnect module"
-  fwconsole ma install sangomaconnect>> $log 2>&1
+  fwconsole ma install sangomaconnect>> $log
 
 
   if [ $dahdi ]; then
@@ -1136,43 +1127,49 @@ else
 	echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
   fi
 
-  setCurrentStep "Installing install local module"
-  fwconsole ma installlocal >> $log 2>&1
+  setCurrentStep "Installing all local modules"
+  fwconsole ma installlocal >> $log
+
+  # Check if only opensource required then remove the commercial modules
+  if [ $opensourceonly ] ; then
+	setCurrentStep "Removing commercial modules"
+	remove_commercial_modules
+  fi
 
   setCurrentStep "Upgrading FreePBX 17 modules"
-  fwconsole ma upgradeall >> $log 2>&1
+  fwconsole ma upgradeall >> $log
 
   setCurrentStep "Reloading and restarting FreePBX 17"
-  fwconsole reload >> $log 2>&1
-  fwconsole restart >> $log 2>&1
+  fwconsole reload >> $log
+  fwconsole restart >> $log
 fi
 
 
 setCurrentStep "Wrapping up the installation process"
-systemctl daemon-reload >> "$log" 2>&1
+systemctl daemon-reload >> "$log"
 if [ ! $nofpbx ] ; then
-  systemctl enable freepbx >> "$log" 2>&1
+  systemctl enable freepbx >> "$log"
 fi
 
 #delete apache2 index.html as we do not need that file
 rm -f /var/www/html/index.html
 
 #enable apache mod ssl
-/usr/sbin/a2enmod ssl  >> "$log" 2>&1
+a2enmod ssl  >> "$log"
 
 #enable apache mod expires
-/usr/sbin/a2enmod expires  >> "$log" 2>&1
+a2enmod expires  >> "$log"
 
 #enable apache
-a2enmod rewrite >> "$log" 2>&1
+a2enmod rewrite >> "$log"
 
 #Enabling freepbx apache configuration
 if [ ! $nofpbx ] ; then 
-  a2ensite freepbx.conf
+  a2ensite freepbx.conf >> "$log"
 fi
 
 #Setting postfix size to 100MB
-/usr/sbin/postconf -e message_size_limit=102400000
+postconf -e message_size_limit=102400000
 
 # Disable expose_php for provide less information to attacker
 sed -i 's/\(^expose_php = \).*/\1Off/' /etc/php/${PHPVERSION}/apache2/php.ini
@@ -1194,7 +1191,7 @@ fi
 
 
 # Restart apache2
-systemctl restart apache2 >> "$log" 2>&1
+systemctl restart apache2 >> "$log"
 
 # Refresh signatures
 count=1
@@ -1233,11 +1230,6 @@ create_post_apt_script
 
 setCurrentStep "FreePBX 17 Installation finished successfully."
 
-# Check if only opensource required then remove the commercial modules
-if [ $opensourceonly ] ; then
-	remove_commercial_modules
-fi
-
 
 ############ POST INSTALL VALIDATION ############################################
 # Commands for post-installation validation
@@ -1255,7 +1247,7 @@ fi
 
 check_asterisk
 
-execution_time="$(($(date +%s) - $start))"
+execution_time="$(($(date +%s) - start))"
 message "Total script Execution Time: $execution_time"
 message "Finished FreePBX 17 installation process for $host $kernel"
 message "Join us on the FreePBX Community Forum: https://community.freepbx.org/ ";
