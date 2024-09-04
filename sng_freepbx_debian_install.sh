@@ -1109,7 +1109,7 @@ else
 
 
   if [ $dahdi ]; then
-	fwconsole ma downloadinstall dahdiconfig
+	fwconsole ma downloadinstall dahdiconfig >> $log
 	echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
   fi
 
