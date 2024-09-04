@@ -95,11 +95,12 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+# Create the log file
 mkdir -p "${LOG_FOLDER}"
-echo "" > $log
+touch "${LOG_FILE}"
 
-#Helpers APIs
-exec 2>>${LOG_FILE}
+# Redirect stderr to the log file
+exec 2>>"${LOG_FILE}"
 
 #Comparing version
 compare_version() {
@@ -200,7 +201,7 @@ pkg_install() {
 		log "$PKG already present ...."
 	else
 		message "Installing $PKG ...."
-		apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install $PKG >> $log 2>&1
+		apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install $PKG >> $log
 		if isinstalled $PKG; then
 			message "$PKG installed successfully...."
 		else
@@ -250,21 +251,21 @@ install_asterisk() {
 }
 
 setup_repositories() {
-	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log" 2>&1
+	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log"
 
-	wget -qO - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log" 2>&1
+	wget -qO - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
 
 	# Setting our default repo server
 	if [ $testrepo ] ; then
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log" 2>&1
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
 	else
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log" 2>&1
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
+		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
 	fi
 
 	if [ ! $noaac ] ; then
-		add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log" 2>&1
+		add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log"
 	fi
 
 	setCurrentStep "Setting up Sangoma repository"
@@ -487,15 +488,15 @@ check_kernel_compatibility() {
 
 remove_commercial_modules() {
   comm_modules=$(fwconsole ma list | grep Commercial | awk '{print $2}')
-  echo "$comm_modules" | xargs -I {} fwconsole ma -f uninstall {} >> "$log" 2>&1
-  echo "$comm_modules" | xargs -I {} fwconsole ma remove {} >> "$log" 2>&1
+  echo "$comm_modules" | xargs -I {} fwconsole ma -f uninstall {} >> "$log"
+  echo "$comm_modules" | xargs -I {} fwconsole ma remove {} >> "$log"
   # Remove firewall module also because it depends on commercial sysadmin module
-  fwconsole ma uninstall firewall >> "$log" 2>&1
-  fwconsole ma remove firewall >> "$log" 2>&1
+  fwconsole ma uninstall firewall >> "$log"
+  fwconsole ma remove firewall >> "$log"
 }
 
 refresh_signatures() {
-  fwconsole ma refreshsignatures >> "$log" 2>&1
+  fwconsole ma refreshsignatures >> "$log"
 }
 
 check_services() {
@@ -709,8 +710,8 @@ log "  Executing script v$SCRIPTVER ..."
 
 setCurrentStep "Making sure installation is sane"
 # Fixing broken install
-apt-get -y --fix-broken install >> $log 2>&1
-apt-get autoremove -y >> "$log" 2>&1
+apt-get -y --fix-broken install >> $log
+apt-get autoremove -y >> "$log"
 
 # Check if the CD-ROM repository is present in the sources.list file
 if grep -q "^deb cdrom" /etc/apt/sources.list; then
@@ -719,7 +720,7 @@ if grep -q "^deb cdrom" /etc/apt/sources.list; then
   message "Commented out CD-ROM repository in sources.list"
 fi
 
-apt-get update >> $log 2>&1
+apt-get update >> $log
 
 # Adding iptables and postfix  inputs so "iptables-persistent" and postfix will not ask for the input
 setCurrentStep "Setting up default configuration"
@@ -752,10 +753,10 @@ if [ $dahdi ]; then
 fi
 
 setCurrentStep "Updating repository"
-apt-get update >> $log 2>&1
+apt-get update >> $log
 
 # log the apt-cache policy
-apt-cache policy  >> $log 2>&1
+apt-cache policy  >> $log
 
 # Don't start the tftp & chrony daemons automatically, as we need to change their configuration
 systemctl mask tftpd-hpa.service chrony.service
@@ -931,7 +932,7 @@ else
 fi
 
 setCurrentStep "Removing unnecessary packages"
-apt-get autoremove -y >> "$log" 2>&1
+apt-get autoremove -y >> "$log"
 
 execution_time="$(($(date +%s) - start))"
 message "Execution time to install all the dependent packages : $execution_time s"
@@ -1102,11 +1103,11 @@ else
 
 	# Reinstalling modules to ensure all the modules are enabled/installed
   setCurrentStep "Installing Sysadmin module"
-  fwconsole ma install sysadmin >> $log 2>&1
+  fwconsole ma install sysadmin >> $log
 
   #Not installing sangoma connect result in failure of first installlocal
   setCurrentStep "Installing sangomaconnect module"
-  fwconsole ma install sangomaconnect>> $log 2>&1
+  fwconsole ma install sangomaconnect>> $log
 
 
   if [ $dahdi ]; then
@@ -1115,7 +1116,7 @@ else
   fi
 
   setCurrentStep "Installing all local modules"
-  fwconsole ma installlocal >> $log 2>&1
+  fwconsole ma installlocal >> $log
 
   # Check if only opensource required then remove the commercial modules
   if [ $opensourceonly ] ; then
@@ -1124,35 +1125,35 @@ else
   fi
 
   setCurrentStep "Upgrading FreePBX 17 modules"
-  fwconsole ma upgradeall >> $log 2>&1
+  fwconsole ma upgradeall >> $log
 
   setCurrentStep "Reloading and restarting FreePBX 17"
-  fwconsole reload >> $log 2>&1
-  fwconsole restart >> $log 2>&1
+  fwconsole reload >> $log
+  fwconsole restart >> $log
 fi
 
 
 setCurrentStep "Wrapping up the installation process"
-systemctl daemon-reload >> "$log" 2>&1
+systemctl daemon-reload >> "$log"
 if [ ! $nofpbx ] ; then
-  systemctl enable freepbx >> "$log" 2>&1
+  systemctl enable freepbx >> "$log"
 fi
 
 #delete apache2 index.html as we do not need that file
 rm -f /var/www/html/index.html
 
 #enable apache mod ssl
-a2enmod ssl  >> "$log" 2>&1
+a2enmod ssl  >> "$log"
 
 #enable apache mod expires
-a2enmod expires  >> "$log" 2>&1
+a2enmod expires  >> "$log"
 
 #enable apache
-a2enmod rewrite >> "$log" 2>&1
+a2enmod rewrite >> "$log"
 
 #Enabling freepbx apache configuration
 if [ ! $nofpbx ] ; then 
-  a2ensite freepbx.conf >> "$log" 2>&1
+  a2ensite freepbx.conf >> "$log"
 fi
 
 #Setting postfix size to 100MB
@@ -1178,7 +1179,7 @@ fi
 
 
 # Restart apache2
-systemctl restart apache2 >> "$log" 2>&1
+systemctl restart apache2 >> "$log"
 
 # Refresh signatures
 count=1
