@@ -637,15 +637,15 @@ check_asterisk() {
 }
 
 hold_packages() {
-    if [ ! $nofpbx ] ; then
-      apt-mark hold freepbx17
-    fi
     # List of package names to hold
     local packages=("sangoma-pbx17" "nodejs" "node-*")
+    if [ ! $nofpbx ] ; then
+        packages+=("freepbx17")
+    fi
 
     # Loop through each package and hold it
     for pkg in "${packages[@]}"; do
-        apt-mark hold "$pkg"
+        apt-mark hold "$pkg" >> "$log"
     done
 }
 
