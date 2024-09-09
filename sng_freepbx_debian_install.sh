@@ -37,10 +37,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Setup a sane PATH for script execution as root
-if ! grep -q "export PATH=$SANE_PATH" /root/.bashrc; then
-  echo "export PATH=$SANE_PATH" >> /root/.bashrc
-  export PATH=$SANE_PATH
-fi
+export PATH=$SANE_PATH
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
