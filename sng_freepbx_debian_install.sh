@@ -22,7 +22,7 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 set -e
-SCRIPTVER="1.10"
+SCRIPTVER="1.11"
 ASTVERSION=21
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
