@@ -878,6 +878,9 @@ for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
 done
 
+#delete apache2 index.html as we do not need that file
+rm -f /var/www/html/index.html
+
 if  dpkg -l | grep -q 'postfix'; then
     warning_message="# WARNING: Changing the inet_interfaces to an IP other than 127.0.0.1 may expose Postfix to external network connections.\n# Only modify this setting if you understand the implications and have specific network requirements."
 
@@ -1135,8 +1138,6 @@ if [ ! $nofpbx ] ; then
   systemctl enable freepbx >> "$log"
 fi
 
-#delete apache2 index.html as we do not need that file
-rm -f /var/www/html/index.html
 
 #enable apache mod ssl
 a2enmod ssl  >> "$log"
