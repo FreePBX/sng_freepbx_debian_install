@@ -44,6 +44,10 @@ fi
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
+		--dev)
+			dev=true
+			shift # past argument
+			;;
 		--testing)
 			testrepo=true
 			shift # past argument
