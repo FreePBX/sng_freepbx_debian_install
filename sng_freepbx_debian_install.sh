@@ -22,7 +22,7 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 set -e
-SCRIPTVER="1.10"
+SCRIPTVER="1.11"
 ASTVERSION=21
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
@@ -37,10 +37,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Setup a sane PATH for script execution as root
-if ! grep -q "export PATH=$SANE_PATH" /root/.bashrc; then
-  echo "export PATH=$SANE_PATH" >> /root/.bashrc
-  export PATH=$SANE_PATH
-fi
+export PATH=$SANE_PATH
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -120,7 +117,7 @@ compare_version() {
 check_version() {
     # Fetching latest version and checksum
     REPO_URL="https://github.com/FreePBX/sng_freepbx_debian_install/raw/master"
-    wget -q -O /tmp/sng_freepbx_debian_install_latest_from_github.sh "$REPO_URL/sng_freepbx_debian_install.sh"
+    wget -O /tmp/sng_freepbx_debian_install_latest_from_github.sh "$REPO_URL/sng_freepbx_debian_install.sh" >> "$log"
 
     latest_version=$(grep '^SCRIPTVER="' /tmp/sng_freepbx_debian_install_latest_from_github.sh | awk -F'"' '{print $2}')
     latest_checksum=$(sha256sum /tmp/sng_freepbx_debian_install_latest_from_github.sh | awk '{print $1}')
@@ -257,7 +254,7 @@ install_asterisk() {
 setup_repositories() {
 	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log"
 
-	wget -qO - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
+	wget -O - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
 
 	# Setting our default repo server
 	if [ $testrepo ] ; then
@@ -360,7 +357,7 @@ create_post_apt_script() {
 check_kernel_compatibility() {
     local latest_dahdi_supported_version=$(apt-cache search dahdi | grep -E "^dahdi-linux-kmod-[0-9]" | awk '{print $1}' | awk -F'-' '{print $4"-"$5}' | sort -n | tail -1)
     local latest_wanpipe_supported_version=$(apt-cache search wanpipe | grep -E "^kmod-wanpipe-[0-9]" | awk '{print $1}' | awk -F'-' '{print $3"-"$4}' | sort -n | tail -1)
-    local curr_kernel_version=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+    local curr_kernel_version=$1
 
     if dpkg --compare-versions "$latest_dahdi_supported_version" "eq" "$latest_wanpipe_supported_version"; then
         local supported_kernel_version=$latest_dahdi_supported_version
@@ -393,7 +390,7 @@ check_kernel_compatibility() {
         echo "set_supported_kernel_version() {"
         echo "    local latest_dahdi_supported_version=\$(apt-cache search dahdi | grep -E \"^dahdi-linux-kmod-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$4,-\$5}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
         echo "    local latest_wanpipe_supported_version=\$(apt-cache search wanpipe | grep -E \"^kmod-wanpipe-[0-9]\" | awk '{print \$1}' | awk -F'-' '{print \$3,-\$4}' | sed 's/[[:space:]]//g' | sort -n | tail -1)"
-        echo "    curr_kernel_version=\`apt-cache show linux-headers-\$(uname -r) | sed -n -e 's/Package: linux-headers-\([[:digit:].-]*\).*/\1/' -e 's/-$//p' | uniq\`"
+        echo "    curr_kernel_version=\$(uname -r | cut -d'-' -f1-2)"
         echo ""
         echo "    if dpkg --compare-versions \"\$latest_dahdi_supported_version\" \"eq\" \"\$latest_wanpipe_supported_version\"; then"
         echo "        supported_kernel_version=\$latest_dahdi_supported_version"
@@ -641,15 +638,15 @@ check_asterisk() {
 }
 
 hold_packages() {
-    if [ ! $nofpbx ] ; then
-      apt-mark hold freepbx17
-    fi
     # List of package names to hold
     local packages=("sangoma-pbx17" "nodejs" "node-*")
+    if [ ! $nofpbx ] ; then
+        packages+=("freepbx17")
+    fi
 
     # Loop through each package and hold it
     for pkg in "${packages[@]}"; do
-        apt-mark hold "$pkg"
+        apt-mark hold "$pkg" >> "$log"
     done
 }
 
@@ -743,17 +740,17 @@ setCurrentStep "Setting up repositories"
 setup_repositories
 
 lat_dahdi_supp_ver=$(apt-cache search dahdi | grep -E "^dahdi-linux-kmod-[0-9]" | awk '{print $1}' | awk -F'-' '{print $4"-"$5}' | sort -n | tail -1)
-curr_ker_ver=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
+kernel_version=$(uname -r | cut -d'-' -f1-2)
 
-message " You are installing FreePBX 17 on kernel $curr_ker_ver.."
+message " You are installing FreePBX 17 on kernel $kernel_version."
 message " Please note that if you have plan to use DAHDI then:"
 message " Ensure that you either choose DAHDI option so script will configure DAHDI"
 message "                                  OR"
-message " Ensure you are always running DAHDI supported Kernel. Current DAHDI supporter latest kernel version is $lat_dahdi_supp_ver"
+message " Ensure you are running a DAHDI supported Kernel. Current latest supported kernel version is $lat_dahdi_supp_ver."
 
 if [ $dahdi ]; then
     setCurrentStep "Making sure we allow only proper kernel upgrade and version installation"
-    check_kernel_compatibility
+    check_kernel_compatibility "$kernel_version"
 fi
 
 setCurrentStep "Updating repository"
@@ -919,10 +916,9 @@ rm -f /etc/openvpn/easyrsa3/pki/vars || true
 rm -f /etc/openvpn/easyrsa3/vars
 
 # Install Dahdi card support if --dahdi option is provided
-if [[ "$dahdi" == true ]]; then
-    echo "Installing Dahdi card support..."
-    kernel_version=`apt-cache show linux-headers-$(uname -r) | sed -n -e 's/Package: linux-headers-\\([[:digit:].-]*\\).*/\\1/' -e 's/-\$//p' | uniq`
-    DAHDIPKGS=("asterisk21-dahdi"
+if [ "$dahdi" ]; then
+    message "Installing DAHDI card support..."
+    DAHDIPKGS=("asterisk${ASTVERSION}-dahdi"
            "dahdi-firmware"
            "dahdi-linux"
            "dahdi-linux-devel"
@@ -1127,7 +1123,7 @@ else
 
 
   if [ $dahdi ]; then
-	fwconsole ma downloadinstall dahdiconfig
+	fwconsole ma downloadinstall dahdiconfig >> $log
 	echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
   fi
 
