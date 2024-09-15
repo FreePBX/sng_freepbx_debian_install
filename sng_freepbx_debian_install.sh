@@ -254,15 +254,15 @@ setup_repositories() {
 
 	# Setting our default repo server
 	if [ $testrepo ] ; then
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
+		add-apt-repository -y "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
+		add-apt-repository -y "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
 	else
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
+		add-apt-repository -y "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
+		add-apt-repository -y "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
 	fi
 
 	if [ ! $noaac ] ; then
-		add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log"
+		add-apt-repository -y "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log"
 	fi
 
 	setCurrentStep "Setting up Sangoma repository"
