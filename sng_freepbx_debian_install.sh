@@ -57,10 +57,6 @@ while [[ $# -gt 0 ]]; do
 			opensourceonly=true
 			shift # past argument
 			;;
-		--noioncube)
-			noioncube=true
-			shift # past argument
-			;;
 		--noaac)
 			noaac=true
 			shift # past argument
@@ -76,7 +72,6 @@ while [[ $# -gt 0 ]]; do
 		--dahdi-only)
 			nofpbx=true
 			noast=true
-			noioncube=true
 			noaac=true
 			dahdi=true
 			shift # past argument
@@ -1055,16 +1050,6 @@ fi
 # Install PBX dependent packages
 setCurrentStep "Installing FreePBX packages"
 
-# Install ionCube
-if [ $noioncube ] ; then
-	message "Skipping ionCube installation due to noioncube option"
-else
-	# TODO Need to check if ioncube installed already then remove that and install new ones.
-	# Install ionCube
-	setCurrentStep "Installing ionCube packages."
-	pkg_install ioncube-loader-82
-fi
-
 FPBXPKGS=("sysadmin17"
 	   "sangoma-pbx17"
 	   "ffmpeg"
@@ -1095,6 +1080,7 @@ if [ $nofpbx ] ; then
 	message "Skipping FreePBX 17 fresh tarball installation due to nofreepbx option"
 else
 	setCurrentStep "Installing FreePBX 17"
+	pkg_install ioncube-loader-82
 	pkg_install freepbx17
 
 	# Reinstalling modules to ensure all the modules are enabled/installed
