@@ -1082,14 +1082,6 @@ else
     fwconsole ma -f remove firewall >> "$log" || true
   fi
 
-  # Reinstalling modules to ensure all the modules are enabled/installed
-  setCurrentStep "Installing Sysadmin module"
-  fwconsole ma install sysadmin >> $log
-
-  # Not installing sangoma connect result in failure of first installlocal
-  setCurrentStep "Installing sangomaconnect module"
-  fwconsole ma install sangomaconnect>> $log
-
   if [ $dahdi ]; then
     fwconsole ma downloadinstall dahdiconfig >> $log
     echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
