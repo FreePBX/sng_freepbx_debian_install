@@ -478,15 +478,6 @@ check_kernel_compatibility() {
     chmod 644 /etc/apt/apt.conf.d/05checkkernel
 }
 
-remove_commercial_modules() {
-  comm_modules=$(fwconsole ma list | grep Commercial | awk '{print $2}')
-  echo "$comm_modules" | xargs -I {} fwconsole ma -f uninstall {} >> "$log"
-  echo "$comm_modules" | xargs -I {} fwconsole ma remove {} >> "$log"
-  # Remove firewall module also because it depends on commercial sysadmin module
-  fwconsole ma uninstall firewall >> "$log"
-  fwconsole ma remove firewall >> "$log"
-}
-
 refresh_signatures() {
   fwconsole ma refreshsignatures >> "$log"
 }
@@ -1077,34 +1068,27 @@ systemctl restart fail2ban  >> $log
 
 
 if [ $nofpbx ] ; then
-	message "Skipping FreePBX 17 fresh tarball installation due to nofreepbx option"
+  message "Skipping FreePBX 17 installation due to nofreepbx option"
 else
-	setCurrentStep "Installing FreePBX 17"
-	pkg_install ioncube-loader-82
-	pkg_install freepbx17
+  setCurrentStep "Installing FreePBX 17"
+  pkg_install ioncube-loader-82
+  pkg_install freepbx17
 
-	# Reinstalling modules to ensure all the modules are enabled/installed
-  setCurrentStep "Installing Sysadmin module"
-  fwconsole ma install sysadmin >> $log
-
-  #Not installing sangoma connect result in failure of first installlocal
-  setCurrentStep "Installing sangomaconnect module"
-  fwconsole ma install sangomaconnect>> $log
-
+  # Check if only opensource required then remove the commercial modules
+  if [ "$opensourceonly" ]; then
+    setCurrentStep "Removing commercial modules"
+    fwconsole ma list | awk '/Commercial/ {print $2}' | xargs -I {} fwconsole ma -f remove {} >> "$log"
+    # Remove firewall module also because it depends on commercial sysadmin module
+    fwconsole ma -f remove firewall >> "$log" || true
+  fi
 
   if [ $dahdi ]; then
-	fwconsole ma downloadinstall dahdiconfig >> $log
-	echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
+    fwconsole ma downloadinstall dahdiconfig >> $log
+    echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
   fi
 
   setCurrentStep "Installing all local modules"
   fwconsole ma installlocal >> $log
-
-  # Check if only opensource required then remove the commercial modules
-  if [ $opensourceonly ] ; then
-	setCurrentStep "Removing commercial modules"
-	remove_commercial_modules
-  fi
 
   setCurrentStep "Upgrading FreePBX 17 modules"
   fwconsole ma upgradeall >> $log
@@ -1112,8 +1096,16 @@ else
   setCurrentStep "Reloading and restarting FreePBX 17"
   fwconsole reload >> $log
   fwconsole restart >> $log
-fi
 
+  if [ "$opensourceonly" ]; then
+    # Uninstall the sysadmin helper package for the sysadmin commercial module
+    message "Uninstalling sysadmin17"
+    apt-get purge -y sysadmin17 >> "$log"
+    # Uninstall ionCube loader required for commercial modules and to install the freepbx17 package
+    message "Uninstalling ioncube-loader-82"
+    apt-get purge -y ioncube-loader-82 >> "$log"
+  fi
+fi
 
 setCurrentStep "Wrapping up the installation process"
 systemctl daemon-reload >> "$log"
