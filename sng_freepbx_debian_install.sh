@@ -1160,6 +1160,7 @@ chown -R asterisk:asterisk /var/www/html/
 create_post_apt_script
 
 # Refresh signatures
+setCurrentStep "Refreshing modules signatures."
 count=1
 if [ ! $nofpbx ]; then
   while [ $count -eq 1 ]; do
