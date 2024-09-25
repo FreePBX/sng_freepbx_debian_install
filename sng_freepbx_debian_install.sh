@@ -1143,6 +1143,22 @@ sed -i 's/\(^ServerSignature \).*/\1Off/' /etc/apache2/conf-available/security.c
 # Restart apache2
 systemctl restart apache2 >> "$log"
 
+setCurrentStep "Holding Packages"
+
+hold_packages
+
+# Update logrotate configuration
+if grep -q '^#dateext' /etc/logrotate.conf; then
+   message "Setting up logrotate.conf"
+   sed -i 's/^#dateext/dateext/' /etc/logrotate.conf
+fi
+
+#setting permisions
+chown -R asterisk:asterisk /var/www/html/
+
+#Creating post apt scripts
+create_post_apt_script
+
 # Refresh signatures
 count=1
 if [ ! $nofpbx ]; then
@@ -1162,21 +1178,6 @@ if [ ! $nofpbx ]; then
   done
 fi
 
-setCurrentStep "Holding Packages"
-
-hold_packages
-
-# Update logrotate configuration
-if grep -q '^#dateext' /etc/logrotate.conf; then
-   message "Setting up logrotate.conf"
-   sed -i 's/^#dateext/dateext/' /etc/logrotate.conf
-fi
-
-#setting permisions
-chown -R asterisk:asterisk /var/www/html/
-
-#Creating post apt scripts
-create_post_apt_script
 
 setCurrentStep "FreePBX 17 Installation finished successfully."
 
