@@ -22,13 +22,21 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 set -e
-SCRIPTVER="1.12"
+SCRIPTVER="1.13"
 ASTVERSION=21
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
 log=$LOG_FILE
 SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Check if running in a Container
+if [ $(grep -c "lxc" /proc/1/environ 2>/dev/null) -gt 0 ]; then
+    echo "Running in LXC Container. Skipping Chrony."
+    CONTAINER=true
+else
+    CONTAINER=false
+fi
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
@@ -742,7 +750,11 @@ apt-get update >> $log
 apt-cache policy  >> $log
 
 # Don't start the tftp & chrony daemons automatically, as we need to change their configuration
-systemctl mask tftpd-hpa.service chrony.service
+if [ $CONTAINER == true ]; then
+    systemctl mask tftpd-hpa.service
+else
+    systemctl mask tftpd-hpa.service chrony.service
+fi
 
 # Install dependent packages
 setCurrentStep "Installing required packages"
@@ -771,7 +783,6 @@ DEPPKGS=("redis-server"
 	"apache2"
 	"zip"
 	"incron"
-	"chrony"
 	"wget"
 	"vim"
 	"build-essential"
@@ -860,6 +871,9 @@ DEPPKGS=("redis-server"
  	"default-libmysqlclient-dev"
  	"at"
 )
+if [ $CONTAINER != true ]; then
+    DEPPKGS+=("chrony")
+fi
 for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
 done
@@ -944,11 +958,18 @@ sed -i -e "s|^TFTP_DIRECTORY=\"/srv\/tftp\"$|TFTP_DIRECTORY=\"/tftpboot\"|" /etc
 # Change the tftp & chrony options when IPv6 is not available, to allow successful execution
 if [ ! -f /proc/net/if_inet6 ]; then
 	sed -i -e "s|^TFTP_OPTIONS=\"--secure\"$|TFTP_OPTIONS=\"--secure --ipv4\"|" /etc/default/tftpd-hpa
-	sed -i -e "s|^DAEMON_OPTS=\"-F 1\"$|DAEMON_OPTS=\"-F 1 -4\"|" /etc/default/chrony
+    if [ $CONTAINER != true ]; then
+        sed -i -e "s|^DAEMON_OPTS=\"-F 1\"$|DAEMON_OPTS=\"-F 1 -4\"|" /etc/default/chrony
+    fi
 fi
 # Start the tftp & chrony daemons
-systemctl unmask tftpd-hpa.service chrony.service
-systemctl start tftpd-hpa.service chrony.service
+if [ $CONTAINER == true ]; then
+    systemctl unmask tftpd-hpa.service
+    systemctl start tftpd-hpa.service
+else
+    systemctl unmask tftpd-hpa.service chrony.service
+    systemctl start tftpd-hpa.service chrony.service
+fi
 
 # Creating asterisk sound directory
 mkdir -p /var/lib/asterisk/sounds
