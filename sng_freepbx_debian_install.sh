@@ -30,19 +30,18 @@ LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
 log=$LOG_FILE
 SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Check if running in a Container
-if [ $(grep -c "lxc" /proc/1/environ 2>/dev/null) -gt 0 ]; then
-    echo "Running in LXC Container. Skipping Chrony."
-    CONTAINER=true
-else
-    CONTAINER=false
-fi
-
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
 fi
+
+# Check if running in a Container
+if systemd-detect-virt --container &> /dev/null; then
+    message "Running in a Container. Skipping Chrony installation."
+    CONTAINER=true
+fi
+
 
 # Setup a sane PATH for script execution as root
 export PATH=$SANE_PATH
@@ -750,10 +749,9 @@ apt-get update >> $log
 apt-cache policy  >> $log
 
 # Don't start the tftp & chrony daemons automatically, as we need to change their configuration
-if [ $CONTAINER == true ]; then
-    systemctl mask tftpd-hpa.service
-else
-    systemctl mask tftpd-hpa.service chrony.service
+systemctl mask tftpd-hpa.service
+if [ $CONTAINER != true ]; then
+    systemctl mask chrony.service
 fi
 
 # Install dependent packages
@@ -963,12 +961,11 @@ if [ ! -f /proc/net/if_inet6 ]; then
     fi
 fi
 # Start the tftp & chrony daemons
-if [ $CONTAINER == true ]; then
-    systemctl unmask tftpd-hpa.service
-    systemctl start tftpd-hpa.service
-else
-    systemctl unmask tftpd-hpa.service chrony.service
-    systemctl start tftpd-hpa.service chrony.service
+systemctl unmask tftpd-hpa.service
+systemctl start tftpd-hpa.service
+if [ $CONTAINER != true ]; then
+    systemctl unmask chrony.service
+    systemctl start chrony.service
 fi
 
 # Creating asterisk sound directory
