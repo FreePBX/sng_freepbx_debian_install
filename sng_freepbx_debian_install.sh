@@ -29,17 +29,12 @@ LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
 log=$LOG_FILE
 SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+INSTALL_CHRONY=true
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
-fi
-
-# Check if running in a Container
-if systemd-detect-virt --container &> /dev/null; then
-    message "Running in a Container. Skipping Chrony installation."
-    CONTAINER=true
 fi
 
 
@@ -83,6 +78,10 @@ while [[ $# -gt 0 ]]; do
 			dahdi=true
 			shift # past argument
 			;;
+        --disable-chrony)
+            INSTALL_CHRONY=false
+            shift # past argument
+            ;;
 		-*)
 			echo "Unknown option $1"
 			exit 1
@@ -657,6 +656,12 @@ else
     check_version
 fi
 
+# Check if running in a Container
+if systemd-detect-virt --container &> /dev/null; then
+    message "Running in a Container. Skipping Chrony installation."
+    INSTALL_CHRONY=false
+fi
+
 # Check if we are running on a 64-bit system
 ARCH=$(dpkg --print-architecture)
 if [ "$ARCH" != "amd64" ]; then
@@ -750,7 +755,7 @@ apt-cache policy  >> $log
 
 # Don't start the tftp & chrony daemons automatically, as we need to change their configuration
 systemctl mask tftpd-hpa.service
-if [ $CONTAINER != true ]; then
+if [ "$INSTALL_CHRONY" == true ]; then
     systemctl mask chrony.service
 fi
 
@@ -869,7 +874,7 @@ DEPPKGS=("redis-server"
  	"default-libmysqlclient-dev"
  	"at"
 )
-if [ $CONTAINER != true ]; then
+if [ "$INSTALL_CHRONY" == true ]; then
     DEPPKGS+=("chrony")
 fi
 for i in "${!DEPPKGS[@]}"; do
@@ -956,14 +961,14 @@ sed -i -e "s|^TFTP_DIRECTORY=\"/srv\/tftp\"$|TFTP_DIRECTORY=\"/tftpboot\"|" /etc
 # Change the tftp & chrony options when IPv6 is not available, to allow successful execution
 if [ ! -f /proc/net/if_inet6 ]; then
 	sed -i -e "s|^TFTP_OPTIONS=\"--secure\"$|TFTP_OPTIONS=\"--secure --ipv4\"|" /etc/default/tftpd-hpa
-    if [ $CONTAINER != true ]; then
+    if [ "$INSTALL_CHRONY" == true ]; then
         sed -i -e "s|^DAEMON_OPTS=\"-F 1\"$|DAEMON_OPTS=\"-F 1 -4\"|" /etc/default/chrony
     fi
 fi
 # Start the tftp & chrony daemons
 systemctl unmask tftpd-hpa.service
 systemctl start tftpd-hpa.service
-if [ $CONTAINER != true ]; then
+if [ "$INSTALL_CHRONY" == true ]; then
     systemctl unmask chrony.service
     systemctl start chrony.service
 fi
