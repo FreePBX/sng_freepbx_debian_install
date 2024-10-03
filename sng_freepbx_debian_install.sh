@@ -22,7 +22,7 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 set -e
-SCRIPTVER="1.11"
+SCRIPTVER="1.12"
 ASTVERSION=21
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
@@ -61,10 +61,6 @@ while [[ $# -gt 0 ]]; do
 			opensourceonly=true
 			shift # past argument
 			;;
-		--noioncube)
-			noioncube=true
-			shift # past argument
-			;;
 		--noaac)
 			noaac=true
 			shift # past argument
@@ -80,7 +76,6 @@ while [[ $# -gt 0 ]]; do
 		--dahdi-only)
 			nofpbx=true
 			noast=true
-			noioncube=true
 			noaac=true
 			dahdi=true
 			shift # past argument
@@ -485,15 +480,6 @@ check_kernel_compatibility() {
     fi
     echo "APT::Update::Post-Invoke {\"/usr/bin/kernel-check --hold\"}" >> /etc/apt/apt.conf.d/05checkkernel
     chmod 644 /etc/apt/apt.conf.d/05checkkernel
-}
-
-remove_commercial_modules() {
-  comm_modules=$(fwconsole ma list | grep Commercial | awk '{print $2}')
-  echo "$comm_modules" | xargs -I {} fwconsole ma -f uninstall {} >> "$log"
-  echo "$comm_modules" | xargs -I {} fwconsole ma remove {} >> "$log"
-  # Remove firewall module also because it depends on commercial sysadmin module
-  fwconsole ma uninstall firewall >> "$log"
-  fwconsole ma remove firewall >> "$log"
 }
 
 refresh_signatures() {
@@ -1071,16 +1057,6 @@ fi
 # Install PBX dependent packages
 setCurrentStep "Installing FreePBX packages"
 
-# Install ionCube
-if [ $noioncube ] ; then
-	message "Skipping ionCube installation due to noioncube option"
-else
-	# TODO Need to check if ioncube installed already then remove that and install new ones.
-	# Install ionCube
-	setCurrentStep "Installing ionCube packages."
-	pkg_install ioncube-loader-82
-fi
-
 FPBXPKGS=("sysadmin17"
 	   "sangoma-pbx17"
 	   "ffmpeg"
@@ -1108,33 +1084,27 @@ systemctl restart fail2ban  >> $log
 
 
 if [ $nofpbx ] ; then
-	message "Skipping FreePBX 17 fresh tarball installation due to nofreepbx option"
+  message "Skipping FreePBX 17 installation due to nofreepbx option"
 else
-	setCurrentStep "Installing FreePBX 17"
-	pkg_install freepbx17
+  setCurrentStep "Installing FreePBX 17"
+  pkg_install ioncube-loader-82
+  pkg_install freepbx17
 
-	# Reinstalling modules to ensure all the modules are enabled/installed
-  setCurrentStep "Installing Sysadmin module"
-  fwconsole ma install sysadmin >> $log
-
-  #Not installing sangoma connect result in failure of first installlocal
-  setCurrentStep "Installing sangomaconnect module"
-  fwconsole ma install sangomaconnect>> $log
-
+  # Check if only opensource required then remove the commercial modules
+  if [ "$opensourceonly" ]; then
+    setCurrentStep "Removing commercial modules"
+    fwconsole ma list | awk '/Commercial/ {print $2}' | xargs -I {} fwconsole ma -f remove {} >> "$log"
+    # Remove firewall module also because it depends on commercial sysadmin module
+    fwconsole ma -f remove firewall >> "$log" || true
+  fi
 
   if [ $dahdi ]; then
-	fwconsole ma downloadinstall dahdiconfig >> $log
-	echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
+    fwconsole ma downloadinstall dahdiconfig >> $log
+    echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
   fi
 
   setCurrentStep "Installing all local modules"
   fwconsole ma installlocal >> $log
-
-  # Check if only opensource required then remove the commercial modules
-  if [ $opensourceonly ] ; then
-	setCurrentStep "Removing commercial modules"
-	remove_commercial_modules
-  fi
 
   setCurrentStep "Upgrading FreePBX 17 modules"
   fwconsole ma upgradeall >> $log
@@ -1142,8 +1112,16 @@ else
   setCurrentStep "Reloading and restarting FreePBX 17"
   fwconsole reload >> $log
   fwconsole restart >> $log
-fi
 
+  if [ "$opensourceonly" ]; then
+    # Uninstall the sysadmin helper package for the sysadmin commercial module
+    message "Uninstalling sysadmin17"
+    apt-get purge -y sysadmin17 >> "$log"
+    # Uninstall ionCube loader required for commercial modules and to install the freepbx17 package
+    message "Uninstalling ioncube-loader-82"
+    apt-get purge -y ioncube-loader-82 >> "$log"
+  fi
+fi
 
 setCurrentStep "Wrapping up the installation process"
 systemctl daemon-reload >> "$log"
@@ -1178,22 +1156,27 @@ sed -i 's/\(^expose_php = \).*/\1Off/' /etc/php/${PHPVERSION}/apache2/php.ini
 sed -i 's/\(^ServerTokens \).*/\1Prod/' /etc/apache2/conf-available/security.conf
 sed -i 's/\(^ServerSignature \).*/\1Off/' /etc/apache2/conf-available/security.conf
 
-# Make sure that the apache service start after freepbx service is started
-if [ -e "/lib/systemd/system/apache2.service" ]; then
-    if [ -e "/lib/systemd/system/freepbx.service" ]; then
-        is_fpbx_pres=$(grep -nr "freepbx.service" /lib/systemd/system/apache2.service | wc -l)
-
-        if [ $is_fpbx_pres -eq 0 ]; then
-            sed -i '/After=/s/$/ freepbx.service/' /lib/systemd/system/apache2.service
-        fi
-    fi
-fi
-
-
 # Restart apache2
 systemctl restart apache2 >> "$log"
 
+setCurrentStep "Holding Packages"
+
+hold_packages
+
+# Update logrotate configuration
+if grep -q '^#dateext' /etc/logrotate.conf; then
+   message "Setting up logrotate.conf"
+   sed -i 's/^#dateext/dateext/' /etc/logrotate.conf
+fi
+
+#setting permisions
+chown -R asterisk:asterisk /var/www/html/
+
+#Creating post apt scripts
+create_post_apt_script
+
 # Refresh signatures
+setCurrentStep "Refreshing modules signatures."
 count=1
 if [ ! $nofpbx ]; then
   while [ $count -eq 1 ]; do
@@ -1212,21 +1195,6 @@ if [ ! $nofpbx ]; then
   done
 fi
 
-setCurrentStep "Holding Packages"
-
-hold_packages
-
-# Update logrotate configuration
-if grep -q '^#dateext' /etc/logrotate.conf; then
-   message "Setting up logrotate.conf"
-   sed -i 's/^#dateext/dateext/' /etc/logrotate.conf
-fi
-
-#setting permisions
-chown -R asterisk:asterisk /var/www/html/
-
-#Creating post apt scripts
-create_post_apt_script
 
 setCurrentStep "FreePBX 17 Installation finished successfully."
 
