@@ -990,10 +990,7 @@ fi
 # Setting VIM configuration for mouse copy paste
 isVimRcAdapted=$(grep "FreePBX 17 changes" /etc/vim/vimrc.local |wc -l)
 if [ "0" = "${isVimRcAdapted}" ]; then
-	VIMRUNTIME=$(vim -e -T dumb --cmd 'exe "set t_cm=\<C-M>"|echo $VIMRUNTIME|quit' | tr -d '\015' )
-	VIMRUNTIME_FOLDER=$(echo $VIMRUNTIME | sed 's/ //g')
-
-	cat <<EOF >> /etc/vim/vimrc.local
+	cat <<"EOF" >> /etc/vim/vimrc.local
 " FreePBX 17 changes - begin
 " This file loads the default vim options at the beginning and prevents
 " that they are being loaded again later. All other options that will be set,
@@ -1001,7 +998,7 @@ if [ "0" = "${isVimRcAdapted}" ]; then
 " whish at the end of this file.
 
 " Load the defaults
-source $VIMRUNTIME_FOLDER/defaults.vim
+source $VIMRUNTIME/defaults.vim
 
 " Prevent the defaults from being loaded again later, if the user doesn't
 " have a local vimrc (~/.vimrc)
