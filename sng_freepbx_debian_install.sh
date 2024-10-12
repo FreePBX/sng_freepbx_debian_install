@@ -1128,6 +1128,7 @@ a2enmod rewrite >> "$log"
 #Enabling freepbx apache configuration
 if [ ! $nofpbx ] ; then 
   a2ensite freepbx.conf >> "$log"
+  a2ensite default-ssl >> "$log"
 fi
 
 #Setting postfix size to 100MB
