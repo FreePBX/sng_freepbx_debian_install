@@ -29,6 +29,7 @@ LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
 log=$LOG_FILE
 SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+DEBIAN_MIRROR="ftp.debian.org/debian"
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
@@ -76,6 +77,9 @@ while [[ $# -gt 0 ]]; do
 			dahdi=true
 			shift # past argument
 			;;
+		--debianmirror)
+			DEBIAN_MIRROR=$2
+			shift; shift
 		-*)
 			echo "Unknown option $1"
 			exit 1
@@ -257,7 +261,7 @@ setup_repositories() {
 	fi
 
 	if [ ! $noaac ] ; then
-		add-apt-repository -y -S "deb http://ftp.debian.org/debian/ stable main non-free non-free-firmware" >> "$log"
+		add-apt-repository -y -S "deb http://$DEBIAN_MIRROR stable main non-free non-free-firmware" >> "$log"
 	fi
 
 	setCurrentStep "Setting up Sangoma repository"
