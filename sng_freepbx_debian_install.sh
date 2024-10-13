@@ -29,6 +29,7 @@ LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
 log=$LOG_FILE
 SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+NPM_MIRROR=""
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
@@ -76,6 +77,10 @@ while [[ $# -gt 0 ]]; do
 			dahdi=true
 			shift # past argument
 			;;
+                --npmmirror)
+                        NPM_MIRROR=$2
+                        shift; shift
+                        ;;
 		-*)
 			echo "Unknown option $1"
 			exit 1
@@ -1073,6 +1078,11 @@ else
   setCurrentStep "Installing FreePBX 17"
   pkg_install ioncube-loader-82
   pkg_install freepbx17
+
+  if [ -n "$NPM_MIRROR" ] ; then
+    setCurrentStep "Setting environment variable npm_config_registry=$NPM_MIRROR"
+    export npm_config_registry="$NPM_MIRROR"
+  fi
 
   # Check if only opensource required then remove the commercial modules
   if [ "$opensourceonly" ]; then
