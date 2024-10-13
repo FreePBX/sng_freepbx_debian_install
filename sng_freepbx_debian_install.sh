@@ -30,6 +30,7 @@ LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
 log=$LOG_FILE
 SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 DEBIAN_MIRROR="http://ftp.debian.org/debian"
+NPM_MIRROR=""
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
@@ -80,6 +81,11 @@ while [[ $# -gt 0 ]]; do
 		--debianmirror)
 			DEBIAN_MIRROR=$2
 			shift; shift
+			;;
+                --npmmirror)
+                        NPM_MIRROR=$2
+                        shift; shift
+                        ;;
 		-*)
 			echo "Unknown option $1"
 			exit 1
@@ -1078,6 +1084,11 @@ else
   pkg_install ioncube-loader-82
   pkg_install freepbx17
 
+  if [ -n "$NPM_MIRROR" ] ; then
+    setCurrentStep "Setting environment variable npm_config_registry=$NPM_MIRROR"
+    export npm_config_registry="$NPM_MIRROR"
+  fi
+
   # Check if only opensource required then remove the commercial modules
   if [ "$opensourceonly" ]; then
     setCurrentStep "Removing commercial modules"
@@ -1132,6 +1143,7 @@ a2enmod rewrite >> "$log"
 #Enabling freepbx apache configuration
 if [ ! $nofpbx ] ; then 
   a2ensite freepbx.conf >> "$log"
+  a2ensite default-ssl >> "$log"
 fi
 
 #Setting postfix size to 100MB
