@@ -22,7 +22,7 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 set -e
-SCRIPTVER="1.12"
+SCRIPTVER="1.13"
 ASTVERSION=21
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
@@ -37,6 +37,7 @@ if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
 fi
+
 
 # Setup a sane PATH for script execution as root
 export PATH=$SANE_PATH
@@ -78,14 +79,18 @@ while [[ $# -gt 0 ]]; do
 			dahdi=true
 			shift # past argument
 			;;
+		--nochrony)
+			nochrony=true
+			shift # past argument
+			;;
 		--debianmirror)
 			DEBIAN_MIRROR=$2
-			shift; shift
+			shift; shift # past argument
 			;;
-                --npmmirror)
-                        NPM_MIRROR=$2
-                        shift; shift
-                        ;;
+    --npmmirror)
+      NPM_MIRROR=$2
+      shift; shift # past argument
+      ;;
 		-*)
 			echo "Unknown option $1"
 			exit 1
@@ -660,6 +665,12 @@ else
     check_version
 fi
 
+# Check if running in a Container
+if systemd-detect-virt --container &> /dev/null; then
+	message "Running in a Container. Skipping Chrony installation."
+	nochrony=true
+fi
+
 # Check if we are running on a 64-bit system
 ARCH=$(dpkg --print-architecture)
 if [ "$ARCH" != "amd64" ]; then
@@ -752,7 +763,10 @@ apt-get update >> $log
 apt-cache policy  >> $log
 
 # Don't start the tftp & chrony daemons automatically, as we need to change their configuration
-systemctl mask tftpd-hpa.service chrony.service
+systemctl mask tftpd-hpa.service
+if [ "$nochrony" != true ]; then
+	systemctl mask chrony.service
+fi
 
 # Install dependent packages
 setCurrentStep "Installing required packages"
@@ -781,7 +795,6 @@ DEPPKGS=("redis-server"
 	"apache2"
 	"zip"
 	"incron"
-	"chrony"
 	"wget"
 	"vim"
 	"build-essential"
@@ -870,6 +883,9 @@ DEPPKGS=("redis-server"
  	"default-libmysqlclient-dev"
  	"at"
 )
+if [ "$nochrony" != true ]; then
+	DEPPKGS+=("chrony")
+fi
 for i in "${!DEPPKGS[@]}"; do
 	pkg_install ${DEPPKGS[$i]}
 done
@@ -954,11 +970,17 @@ sed -i -e "s|^TFTP_DIRECTORY=\"/srv\/tftp\"$|TFTP_DIRECTORY=\"/tftpboot\"|" /etc
 # Change the tftp & chrony options when IPv6 is not available, to allow successful execution
 if [ ! -f /proc/net/if_inet6 ]; then
 	sed -i -e "s|^TFTP_OPTIONS=\"--secure\"$|TFTP_OPTIONS=\"--secure --ipv4\"|" /etc/default/tftpd-hpa
-	sed -i -e "s|^DAEMON_OPTS=\"-F 1\"$|DAEMON_OPTS=\"-F 1 -4\"|" /etc/default/chrony
+	if [ "$nochrony" != true ]; then
+		sed -i -e "s|^DAEMON_OPTS=\"-F 1\"$|DAEMON_OPTS=\"-F 1 -4\"|" /etc/default/chrony
+	fi
 fi
 # Start the tftp & chrony daemons
-systemctl unmask tftpd-hpa.service chrony.service
-systemctl start tftpd-hpa.service chrony.service
+systemctl unmask tftpd-hpa.service
+systemctl start tftpd-hpa.service
+if [ "$nochrony" != true ]; then
+	systemctl unmask chrony.service
+	systemctl start chrony.service
+fi
 
 # Creating asterisk sound directory
 mkdir -p /var/lib/asterisk/sounds
