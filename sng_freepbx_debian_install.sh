@@ -22,7 +22,7 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 set -e
-SCRIPTVER="1.13"
+SCRIPTVER="1.14"
 ASTVERSION=21
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
@@ -882,6 +882,9 @@ DEPPKGS=("redis-server"
  	"python3-mysqldb"
  	"default-libmysqlclient-dev"
  	"at"
+ 	"avahi-daemon"
+ 	"avahi-utils"
+	"libnss-mdns"
 )
 if [ "$nochrony" != true ]; then
 	DEPPKGS+=("chrony")
