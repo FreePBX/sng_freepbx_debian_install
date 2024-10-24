@@ -885,6 +885,7 @@ DEPPKGS=("redis-server"
  	"avahi-daemon"
  	"avahi-utils"
 	"libnss-mdns"
+	"mailutils"
 )
 if [ "$nochrony" != true ]; then
 	DEPPKGS+=("chrony")
