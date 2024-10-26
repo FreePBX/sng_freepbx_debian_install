@@ -845,6 +845,7 @@ DEPPRODPKGS=(
 	"avahi-daemon"
 	"avahi-utils"
 	"libnss-mdns"
+	"mailutils"
 	# Asterisk package
 	"liburiparser1"
 	# ffmpeg package
