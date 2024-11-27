@@ -1,4 +1,3 @@
-2024-02-20 Version 1.0 is in BETA and for testing only. Not suitable for production systems.
 
 ```
  ______             _____  ______   __
