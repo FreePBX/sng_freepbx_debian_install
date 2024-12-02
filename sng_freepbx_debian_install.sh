@@ -1185,17 +1185,6 @@ sed -i 's/;max_input_vars = 1000/max_input_vars = 2000/' /etc/php/${PHPVERSION}/
 sed -i 's/\(^ServerTokens \).*/\1Prod/' /etc/apache2/conf-available/security.conf
 sed -i 's/\(^ServerSignature \).*/\1Off/' /etc/apache2/conf-available/security.conf
 
-# Make sure that the apache service start after freepbx service is started
-if [ -e "/lib/systemd/system/apache2.service" ]; then
-    if [ -e "/lib/systemd/system/freepbx.service" ]; then
-        is_fpbx_pres=$(grep -nr "freepbx.service" /lib/systemd/system/apache2.service | wc -l)
-
-        if [ $is_fpbx_pres -eq 0 ]; then
-            sed -i '/After=/s/$/ freepbx.service/' /lib/systemd/system/apache2.service
-        fi
-    fi
-fi
-
 # Restart apache2
 systemctl restart apache2 >> "$log"
 
