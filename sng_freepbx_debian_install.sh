@@ -202,22 +202,22 @@ isinstalled() {
 
 # Function to install the package
 pkg_install() {
-	log "############################### "
-	PKG=$@
-	if isinstalled "$PKG"; then
-		log "$PKG already present ...."
-	else
-		message "Installing $PKG ...."
-		apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install "$PKG" >> "$log"
-		if isinstalled "$PKG"; then
-			message "$PKG installed successfully...."
-		else
-			message "$PKG failed to install ...."
-			message "Exiting the installation process as dependent $PKG failed to install ...."
-			terminate
-		fi
-	fi
-	log "############################### "
+    log "############################### "
+    PKG=("$@")  # Assign arguments as an array
+    if isinstalled "${PKG[@]}"; then
+        log "${PKG[*]} already present ...."   # Use * to join the array into a string
+    else
+        message "Installing ${PKG[*]} ...."
+        apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install "${PKG[@]}" >> "$log"
+        if isinstalled "${PKG[@]}"; then
+            message "${PKG[*]} installed successfully...."
+        else
+            message "${PKG[*]} failed to install ...."
+            message "Exiting the installation process as dependent ${PKG[*]} failed to install ...."
+            terminate
+        fi
+    fi
+    log "############################### "
 }
 
 # Function to install the asterisk and dependent packages
