@@ -316,7 +316,7 @@ create_post_apt_script() {
         echo "            continue"
         echo "        fi"
         echo ""
-        echo "        kernel_ver=\$(echo \$kernel | sed -n -e 's/vmlinuz-\([[:digit:].-]*\).*/\\1/' -e 's/-$//p')"
+        printf "      kernel_ver=\$(echo \$kernel | sed -n -e 's/vmlinuz-\([[:digit:].-]*\).*/\\1/' -e 's/-$//p')\n"
         echo "        logger \"Checking kernel modules for dahdi and wanpipe for kernel image \$kernel_ver\""
         echo ""
         echo "        #check if dahdi is installed or not of respective kernel version"
