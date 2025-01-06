@@ -135,7 +135,7 @@ check_version() {
     # Cleaning up downloaded file
     rm -f /tmp/sng_freepbx_debian_install_latest_from_github.sh
 
-    compare_version $SCRIPTVER $latest_version
+    compare_version $SCRIPTVER "$latest_version"
 
     case $result in
             0)
@@ -206,22 +206,22 @@ isinstalled() {
 
 # Function to install the package
 pkg_install() {
-	log "############################### "
-	PKG=$@
-	if isinstalled $PKG; then
-		log "$PKG already present ...."
-	else
-		message "Installing $PKG ...."
-		apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install $PKG >> $log
-		if isinstalled $PKG; then
-			message "$PKG installed successfully...."
-		else
-			message "$PKG failed to install ...."
-			message "Exiting the installation process as dependent $PKG failed to install ...."
-			terminate
-		fi
-	fi
-	log "############################### "
+    log "############################### "
+    PKG=("$@")  # Assign arguments as an array
+    if isinstalled "${PKG[@]}"; then
+        log "${PKG[*]} already present ...."   # Use * to join the array into a string
+    else
+        message "Installing ${PKG[*]} ...."
+        apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install "${PKG[@]}" >> "$log"
+        if isinstalled "${PKG[@]}"; then
+            message "${PKG[*]} installed successfully...."
+        else
+            message "${PKG[*]} failed to install ...."
+            message "Exiting the installation process as dependent ${PKG[*]} failed to install ...."
+            terminate
+        fi
+    fi
+    log "############################### "
 }
 
 # Function to install the asterisk and dependent packages
@@ -250,13 +250,13 @@ install_asterisk() {
 
 	# creating directories
 	mkdir -p /var/lib/asterisk/moh
-	pkg_install asterisk$astver
+	pkg_install asterisk"$astver"
 
 	for i in "${!ASTPKGS[@]}"; do
-		pkg_install asterisk$astver-${ASTPKGS[$i]}
+		pkg_install asterisk"$astver"-"${ASTPKGS[$i]}"
 	done
 
-	pkg_install asterisk$astver.0-freepbx-asterisk-modules
+	pkg_install asterisk"$astver".0-freepbx-asterisk-modules
 	pkg_install asterisk-version-switch
 	pkg_install asterisk-sounds-*
 }
@@ -267,7 +267,7 @@ setup_repositories() {
 	wget -O - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
 
 	# Setting our default repo server
-	if [ $testrepo ] ; then
+	if [ "$testrepo" ] ; then
 		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
 		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
 	else
@@ -275,7 +275,7 @@ setup_repositories() {
 		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
 	fi
 
-	if [ ! $noaac ] ; then
+	if [ ! "$noaac" ] ; then
 		add-apt-repository -y -S "deb $DEBIAN_MIRROR stable main non-free non-free-firmware" >> "$log"
 	fi
 
@@ -286,7 +286,7 @@ Package: *
 Pin: origin deb.freepbx.org
 Pin-Priority: ${MIRROR_PRIO}
 EOF
-    if [ $noaac ]; then
+    if [ "$noaac" ]; then
     cat <<EOF>> $aptpref
 
 Package: ffmpeg
@@ -320,7 +320,7 @@ create_post_apt_script() {
         echo "            continue"
         echo "        fi"
         echo ""
-        echo "        kernel_ver=\$(echo \$kernel | sed -n -e 's/vmlinuz-\([[:digit:].-]*\).*/\\1/' -e 's/-$//p')"
+        printf "      kernel_ver=\$(echo \$kernel | sed -n -e 's/vmlinuz-\([[:digit:].-]*\).*/\\1/' -e 's/-$//p')\n"
         echo "        logger \"Checking kernel modules for dahdi and wanpipe for kernel image \$kernel_ver\""
         echo ""
         echo "        #check if dahdi is installed or not of respective kernel version"
@@ -384,7 +384,7 @@ check_kernel_compatibility() {
         rm -f /usr/bin/kernel-check
     fi
 
-    if [ $testrepo ]; then
+    if [ "$testrepo" ]; then
         message "Skipping Kernel Check. As Kernel Check is not required for testing repo....."
         return
     fi
@@ -599,7 +599,7 @@ check_freepbx() {
         message "FreePBX is not installed. Please install FreePBX to proceed."
     else
         verify_module_status
-	if [ ! $opensourceonly ] ; then
+	if [ ! "$opensourceonly" ] ; then
         	inspect_network_ports
 	fi
         inspect_running_processes
@@ -641,7 +641,7 @@ check_asterisk() {
 hold_packages() {
     # List of package names to hold
     local packages=("sangoma-pbx17" "nodejs" "node-*")
-    if [ ! $nofpbx ] ; then
+    if [ ! "$nofpbx" ] ; then
         packages+=("freepbx17")
     fi
 
@@ -718,7 +718,7 @@ log "  Executing script v$SCRIPTVER ..."
 
 setCurrentStep "Making sure installation is sane"
 # Fixing broken install
-apt-get -y --fix-broken install >> $log
+apt-get -y --fix-broken install >> "$log"
 apt-get autoremove -y >> "$log"
 
 # Check if the CD-ROM repository is present in the sources.list file
@@ -728,7 +728,7 @@ if grep -q "^deb cdrom" /etc/apt/sources.list; then
   message "Commented out CD-ROM repository in sources.list"
 fi
 
-apt-get update >> $log
+apt-get update >> "$log"
 
 # Adding iptables and postfix  inputs so "iptables-persistent" and postfix will not ask for the input
 setCurrentStep "Setting up default configuration"
@@ -755,16 +755,16 @@ message " Ensure that you either choose DAHDI option so script will configure DA
 message "                                  OR"
 message " Ensure you are running a DAHDI supported Kernel. Current latest supported kernel version is $lat_dahdi_supp_ver."
 
-if [ $dahdi ]; then
+if [ "$dahdi" ]; then
     setCurrentStep "Making sure we allow only proper kernel upgrade and version installation"
     check_kernel_compatibility "$kernel_version"
 fi
 
 setCurrentStep "Updating repository"
-apt-get update >> $log
+apt-get update >> "$log"
 
 # log the apt-cache policy
-apt-cache policy  >> $log
+apt-cache policy  >> "$log"
 
 # Don't start the tftp & chrony daemons automatically, as we need to change their configuration
 systemctl mask tftpd-hpa.service
@@ -913,7 +913,7 @@ if [ "$nochrony" != true ]; then
 	DEPPKGS+=("chrony")
 fi
 for i in "${!DEPPKGS[@]}"; do
-	pkg_install ${DEPPKGS[$i]}
+	pkg_install "${DEPPKGS[$i]}"
 done
 
 if  dpkg -l | grep -q 'postfix'; then
@@ -954,12 +954,12 @@ if [ "$dahdi" ]; then
 	)
 
         for i in "${!DAHDIPKGS[@]}"; do
-                pkg_install ${DAHDIPKGS[$i]}
+                pkg_install "${DAHDIPKGS[$i]}"
         done
 fi
 
 # Install libfdk-aac2
-if [ $noaac ] ; then
+if [ "$noaac" ] ; then
 	message "Skipping libfdk-aac2 installation due to noaac option"
 else
 	pkg_install libfdk-aac2
@@ -1049,7 +1049,7 @@ fi
 isVimRcAdapted=$(grep "FreePBX 17 changes" /etc/vim/vimrc.local |wc -l)
 if [ "0" = "${isVimRcAdapted}" ]; then
 	VIMRUNTIME=$(vim -e -T dumb --cmd 'exe "set t_cm=\<C-M>"|echo $VIMRUNTIME|quit' | tr -d '\015' )
-	VIMRUNTIME_FOLDER=$(echo $VIMRUNTIME | sed 's/ //g')
+	VIMRUNTIME_FOLDER=$(echo "$VIMRUNTIME" | sed 's/ //g')
 
 	cat <<EOF >> /etc/vim/vimrc.local
 " FreePBX 17 changes - begin
@@ -1087,7 +1087,7 @@ EOF
 #chown -R asterisk:asterisk /etc/ssl
 
 # Install Asterisk
-if [ $noast ] ; then
+if [ "$noast" ] ; then
 	message "Skipping Asterisk installation due to noasterisk option"
 else
 	# TODO Need to check if asterisk installed already then remove that and install new ones.
@@ -1104,7 +1104,7 @@ FPBXPKGS=("sysadmin17"
 	   "ffmpeg"
    )
 for i in "${!FPBXPKGS[@]}"; do
-	pkg_install ${FPBXPKGS[$i]}
+	pkg_install "${FPBXPKGS[$i]}"
 done
 
 
@@ -1122,10 +1122,10 @@ touch /etc/asterisk/extensions_custom.conf
 chown -R asterisk:asterisk /etc/asterisk
 
 setCurrentStep "Restarting fail2ban"
-systemctl restart fail2ban  >> $log
+systemctl restart fail2ban  >> "$log"
 
 
-if [ $nofpbx ] ; then
+if [ "$nofpbx" ] ; then
   message "Skipping FreePBX 17 installation due to nofreepbx option"
 else
   setCurrentStep "Installing FreePBX 17"
@@ -1145,20 +1145,20 @@ else
     fwconsole ma -f remove firewall >> "$log" || true
   fi
 
-  if [ $dahdi ]; then
-    fwconsole ma downloadinstall dahdiconfig >> $log
+  if [ "$dahdi" ]; then
+    fwconsole ma downloadinstall dahdiconfig >> "$log"
     echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
   fi
 
   setCurrentStep "Installing all local modules"
-  fwconsole ma installlocal >> $log
+  fwconsole ma installlocal >> "$log"
 
   setCurrentStep "Upgrading FreePBX 17 modules"
-  fwconsole ma upgradeall >> $log
+  fwconsole ma upgradeall >> "$log"
 
   setCurrentStep "Reloading and restarting FreePBX 17"
-  fwconsole reload >> $log
-  fwconsole restart >> $log
+  fwconsole reload >> "$log"
+  fwconsole restart >> "$log"
 
   if [ "$opensourceonly" ]; then
     # Uninstall the sysadmin helper package for the sysadmin commercial module
@@ -1172,7 +1172,7 @@ fi
 
 setCurrentStep "Wrapping up the installation process"
 systemctl daemon-reload >> "$log"
-if [ ! $nofpbx ] ; then
+if [ ! "$nofpbx" ] ; then
   systemctl enable freepbx >> "$log"
 fi
 
@@ -1189,7 +1189,7 @@ a2enmod expires  >> "$log"
 a2enmod rewrite >> "$log"
 
 #Enabling freepbx apache configuration
-if [ ! $nofpbx ] ; then 
+if [ ! "$nofpbx" ] ; then 
   a2ensite freepbx.conf >> "$log"
   a2ensite default-ssl >> "$log"
 fi
@@ -1229,7 +1229,7 @@ create_post_apt_script
 # Refresh signatures
 setCurrentStep "Refreshing modules signatures."
 count=1
-if [ ! $nofpbx ]; then
+if [ ! "$nofpbx" ]; then
   while [ $count -eq 1 ]; do
     set +e
     refresh_signatures
@@ -1260,7 +1260,7 @@ check_services
 
 check_php_version
 
-if [ ! $nofpbx ] ; then
+if [ ! "$nofpbx" ] ; then
  check_freepbx
 fi
 
@@ -1271,6 +1271,6 @@ message "Total script Execution Time: $execution_time"
 message "Finished FreePBX 17 installation process for $host $kernel"
 message "Join us on the FreePBX Community Forum: https://community.freepbx.org/ ";
 
-if [ ! $nofpbx ] ; then
+if [ ! "$nofpbx" ] ; then
   fwconsole motd
 fi
