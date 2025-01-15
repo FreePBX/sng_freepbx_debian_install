@@ -861,7 +861,8 @@ DEPPRODPKGS=(
 	# User Control Panel module
 	"pkgconf"
 	"libicu-dev"
-
+	"libsrtp2-1"
+	"libspandsp2"
 )
 DEPDEVPKGS=(
 	"libsnmp-dev"
