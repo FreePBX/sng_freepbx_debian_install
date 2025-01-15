@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# file: sng_freepbx_debian/tasks/main.yml
+
+- name: Checking if Debian 12 target.
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Debian"
+      - ansible_distribution_major_version == "12"
+    fail_msg: "Install terminated. Role currently only works with Debian 12, sorry."
+    success_msg: "{{ ansible_lsb.description }} detected on {{ ansible_host }}. Great!"
+
+- name: Resources for Asterisk.
+  ansible.builtin.include_tasks:
+    file: resources-asterisk.yml
+
+- name: Resources for FreePBX.
+  ansible.builtin.include_tasks:
+    file: resources-freepbx.yml
+
+- name: Repositories.
+  ansible.builtin.include_tasks:
+    file: repositories.yml
+
+- name: Packages.
+  ansible.builtin.include_tasks:
+    file: packages.yml
+
+- name: Tweaks.
+  ansible.builtin.include_tasks:
+    file: tweaks.yml
+
+- name: Apache2.
+  ansible.builtin.include_tasks:
+    file: apache2.yml
+
+- name: FreePBX.
+  ansible.builtin.include_tasks:
+    file: freepbx.yml
