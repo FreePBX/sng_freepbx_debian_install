@@ -877,6 +877,7 @@ DEPPRODPKGS=(
 	"libresample1"
 	"libgmime-3.0-0"
 	"libc-client2007e"
+	"imagemagick"
 )
 DEPDEVPKGS=(
 	"libsnmp-dev"
