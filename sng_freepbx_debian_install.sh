@@ -307,7 +307,11 @@ create_post_apt_script() {
     {
         echo "#!/bin/bash"
         echo ""
-        echo ""
+        echo "if pidof -x 'asterisk-version-switch' > /dev/null; then"
+	echo "echo \"Asterisk version switch process is running, skipping post-apt script.\""
+	echo "exit 0"
+	echo "fi"
+	echo ""
         echo "dahdi_pres=\$(dpkg -l | grep dahdi-linux | wc -l)"
         echo ""
         echo "if [[ \$dahdi_pres -gt 0 ]]; then"
