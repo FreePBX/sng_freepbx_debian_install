@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2024 Penguin PBX Solutions <chris at penguin p b x dot com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# file: sng_freepbx_debian/playbook.yml
+
+- name: Default playbook. (Just enough glue to run this one role.)
+  hosts: all
+  roles:
+    - .
