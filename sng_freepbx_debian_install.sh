@@ -23,7 +23,7 @@
 #####################################################################################
 set -e
 SCRIPTVER="1.14"
-ASTVERSION=21
+ASTVERSION=22
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
@@ -1111,7 +1111,7 @@ if [ "$noast" ] ; then
 	message "Skipping Asterisk installation due to noasterisk option"
 else
 	# TODO Need to check if asterisk installed already then remove that and install new ones.
-	# Install Asterisk 21
+	# Install Asterisk
 	setCurrentStep "Installing Asterisk packages."
 	install_asterisk $ASTVERSION
 fi
