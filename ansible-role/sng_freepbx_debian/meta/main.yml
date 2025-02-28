@@ -1,0 +1,14 @@
+galaxy_info:
+  author: chrsmj
+  role_name: sng_freepbx_debian
+  description: Installs FreePBX 17 with Asterisk 21 on Debian 12, as close to officially as possible.
+  company: Penguin PBX Solutions
+  license: GPLv3+
+
+  min_ansible_version: '2.11'
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+
+  galaxy_tags: ['asterisk', 'freepbx', 'debian', 'penguin']
