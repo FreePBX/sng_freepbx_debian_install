@@ -25,19 +25,37 @@ set -e
 SCRIPTVER="1.14"
 ASTVERSION=22
 PHPVERSION="8.2"
+KERNEL_VERSION="6.1.0.22"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
 log=$LOG_FILE
 SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 DEBIAN_MIRROR="http://ftp.debian.org/debian"
 NPM_MIRROR=""
-
+# Set sane defaults which are updated by switches
+dev=false
+testrepo=false
+nofpbx=false
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
 fi
+# Function to log messages
+declare -a log_buffer
+log() {
+    log_buffer+=("$(date +"%Y-%m-%d %T") - $@")
+}
+flush_log() {
+    printf '%s\n' "${log_buffer[@]}" >> "$LOG_FILE"
+    log_buffer=()
+}
+trap 'flush_log; terminate' EXIT
 
+message() {
+	echo "$(date +"%Y-%m-%d %T") - $*"
+	log "$*"
+}
 
 # Setup a sane PATH for script execution as root
 export PATH=$SANE_PATH
@@ -52,6 +70,78 @@ while [[ $# -gt 0 ]]; do
 			testrepo=true
 			shift # past argument
 			;;
+        --phpversion)
+            # Validate PHP version (e.g., must be a valid version like 8.2, 8.1)
+            if [[ ! "$2" =~ ^[0-9]+\.[0-9]+$ ]]; then
+                echo "Error: --phpversion requires a valid PHP version (e.g., 8.2)"
+                exit 1
+            fi
+            # Optionally, restrict to supported versions
+            case "$2" in
+                "8.2"|"8.3")
+                    PHPVERSION="$2"
+                    ;;
+                *)
+                    echo "Error: Unsupported PHP version '$2'. Supported versions: 8.2, 8.3"
+                    exit 1
+                    ;;
+            esac
+            shift # past argument
+            shift # past value
+            ;;
+        --logpath)
+            # Validate log path (must be a writable directory, no path traversal)
+            if [[ -z "$2" ]]; then
+                echo "Error: --logpath requires a directory path"
+                exit 1
+            fi
+            # Check for path traversal or invalid characters
+            if [[ "$2" =~ \.\. || "$2" =~ [^a-zA-Z0-9/_-] ]]; then
+                echo "Error: --logpath contains invalid characters or path traversal (e.g., '..')"
+                exit 1
+            fi
+            # Ensure the directory exists or can be created
+            if [[ ! -d "$2" ]]; then
+                mkdir -p "$2" 2>/dev/null || {
+                    echo "Error: Cannot create or access log directory '$2'"
+                    exit 1
+                }
+            fi
+            # Check if the directory is writable
+            if [[ ! -w "$2" ]]; then
+                echo "Error: Log directory '$2' is not writable"
+                exit 1
+            fi
+            LOG_FOLDER="$2"
+            LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
+            shift # past argument
+            shift # past value
+            ;;
+        --astver)
+            # Validate Asterisk version (e.g., must be a number like 20, 21, 22)
+            if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+                echo "Error: --astver requires a valid Asterisk version (e.g., 22)"
+                exit 1
+            fi
+            ASTVERSION="$2"
+            shift # past argument
+            shift # past value
+            ;;
+            --kernelver)
+                # Validate Kernel version (e.g., must be a valid kernel version like 6.1.0-22)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --kernelversion requires a kernel version string"
+                    exit 1
+                fi
+                if [[ ! "$2" =~ ^[0-9]+(\.[0-9]+)*(-[a-zA-Z0-9]+)*$ ]]; then
+                    echo "Error: --kernelversion requires a valid kernel version format (e.g., 6.1.0-22)"
+                    exit 1
+                fi
+                KERNEL_VERSION="$2"
+                shift # past argument
+                shift # past value
+      ;;
+
 		--nofreepbx)
 			nofpbx=true
 			shift # past argument
@@ -89,12 +179,22 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--debianmirror)
 			DEBIAN_MIRROR=$2
-			shift; shift # past argument
+            if [[ ! "$DEBIAN_MIRROR" =~ ^https?:// ]]; then
+                echo "Invalid Debian mirror URL: $DEBIAN_MIRROR"
+                exit 1
+            fi
+			shift # past argument
+            shift # past value
 			;;
-    --npmmirror)
-      NPM_MIRROR=$2
-      shift; shift # past argument
-      ;;
+        --npmmirror)
+            NPM_MIRROR=$2
+            if [[ ! "$NPM_MIRROR" =~ ^https?:// ]]; then
+                echo "Invalid NPM mirror URL: $NPM_MIRROR"
+                exit 1
+            fi
+            shift # past argument
+            shift # past value
+            ;;
 		-*)
 			echo "Unknown option $1"
 			exit 1
@@ -106,6 +206,17 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+# Run bins, Log Output
+run_and_log() {
+    local cmd="$1"
+    if eval "$cmd" >> "$LOG_FILE" 2>&1; then
+        log "Successfully executed: $cmd"
+    else
+        log "Failed to execute: $cmd"
+        return 1
+    fi
+}
+
 # Create the log file
 mkdir -p "${LOG_FOLDER}"
 touch "${LOG_FILE}"
@@ -116,26 +227,26 @@ exec 2>>"${LOG_FILE}"
 #Comparing version
 compare_version() {
         if dpkg --compare-versions "$1" "gt" "$2"; then
-                result=0
+                return 0
         elif dpkg --compare-versions "$1" "lt" "$2"; then
-                result=1
+                return 1
         else
-                result=2
+                return 2
         fi
 }
 
 check_version() {
     # Fetching latest version and checksum
     REPO_URL="https://github.com/FreePBX/sng_freepbx_debian_install/raw/master"
-    wget -O /tmp/sng_freepbx_debian_install_latest_from_github.sh "$REPO_URL/sng_freepbx_debian_install.sh" >> "$log"
-
+    run_and_log "wget -O /tmp/sng_freepbx_debian_install_latest_from_github.sh '$REPO_URL/sng_freepbx_debian_install.sh'"
     latest_version=$(grep '^SCRIPTVER="' /tmp/sng_freepbx_debian_install_latest_from_github.sh | awk -F'"' '{print $2}')
     latest_checksum=$(sha256sum /tmp/sng_freepbx_debian_install_latest_from_github.sh | awk '{print $1}')
 
     # Cleaning up downloaded file
     rm -f /tmp/sng_freepbx_debian_install_latest_from_github.sh
 
-    compare_version $SCRIPTVER "$latest_version"
+    compare_version "$SCRIPTVER" "$latest_version"
+    result=$?
 
     case $result in
             0)
@@ -161,16 +272,6 @@ check_version() {
                 fi
             ;;
         esac
-}
-
-# Function to log messages
-log() {
-	echo "$(date +"%Y-%m-%d %T") - $*" >> "$LOG_FILE"
-}
-
-message() {
-	echo "$(date +"%Y-%m-%d %T") - $*"
-	log "$*"
 }
 
 #Function to record and display the current step
@@ -205,78 +306,82 @@ isinstalled() {
 }
 
 # Function to install the package
+# This supports group install and speeds things up
 pkg_install() {
-    log "############################### "
-    PKG=("$@")  # Assign arguments as an array
-    if isinstalled "${PKG[@]}"; then
-        log "${PKG[*]} already present ...."   # Use * to join the array into a string
-    else
-        message "Installing ${PKG[*]} ...."
-        apt-get -y --ignore-missing -o DPkg::Options::="--force-confnew" -o Dpkg::Options::="--force-overwrite" install "${PKG[@]}" >> "$log"
-        if isinstalled "${PKG[@]}"; then
-            message "${PKG[*]} installed successfully...."
+    local pkgs=("$@")
+    if ! isinstalled "${pkgs[@]}"; then
+        if [ ${#pkgs[@]} -eq 1 ]; then
+            message "Installing ${pkgs[0]} ..."
         else
-            message "${PKG[*]} failed to install ...."
-            message "Exiting the installation process as dependent ${PKG[*]} failed to install ...."
+            message "Installing packages: ${pkgs[*]} ..."
+        fi
+        if ! run_and_log "apt-get -y --ignore-missing -o DPkg::Options::=\"--force-confnew\" -o Dpkg::Options::=\"--force-overwrite\" install ${pkgs[*]}"; then
+            message "Failed to install ${pkgs[*]}"
             terminate
         fi
+        if [ ${#pkgs[@]} -eq 1 ]; then
+            message "${pkgs[0]} installed successfully."
+        else
+            message "Packages ${pkgs[*]} installed successfully."
+        fi
+    else
+        log "${pkgs[*]} already present."
     fi
-    log "############################### "
 }
 
 # Function to install the asterisk and dependent packages
 install_asterisk() {
-	astver=$1
-	ASTPKGS=("addons"
-		"addons-bluetooth"
-		"addons-core"
-		"addons-mysql"
-		"addons-ooh323"
-		"core"
-		"curl"
-		"dahdi"
-		"doc"
-		"odbc"
-		"ogg"
-		"flite"
-		"g729"
-		"resample"
-		"snmp"
-		"speex"
-		"sqlite3"
-		"res-digium-phone"
-		"voicemail"
-	)
+    astver=$1
+    ASTPKGS=("addons"
+        "addons-bluetooth"
+        "addons-core"
+        "addons-mysql"
+        "addons-ooh323"
+        "core"
+        "curl"
+        "dahdi"
+        "doc"
+        "odbc"
+        "ogg"
+        "flite"
+        "g729"
+        "resample"
+        "snmp"
+        "speex"
+        "sqlite3"
+        "res-digium-phone"
+        "voicemail"
+    )
 
-	# creating directories
-	mkdir -p /var/lib/asterisk/moh
-	pkg_install asterisk"$astver"
+    # Create array of versioned Asterisk packages
+    local ast_pkgs=()
+    for pkg in "${ASTPKGS[@]}"; do
+        ast_pkgs+=("asterisk$astver-$pkg")
+    done
 
-	for i in "${!ASTPKGS[@]}"; do
-		pkg_install asterisk"$astver"-"${ASTPKGS[$i]}"
-	done
-
-	pkg_install asterisk"$astver".0-freepbx-asterisk-modules
-	pkg_install asterisk-version-switch
-	pkg_install asterisk-sounds-*
+    # Install directories and packages
+    mkdir -p /var/lib/asterisk/moh
+    pkg_install "asterisk$astver"
+    pkg_install "${ast_pkgs[@]}"
+    pkg_install "asterisk$astver.0-freepbx-asterisk-modules"
+    pkg_install "asterisk-version-switch"
+    pkg_install "asterisk-sounds-*"
 }
 
 setup_repositories() {
-	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log"
+	run_and_log 'apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52"'
 
-	wget -O - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
+	run_and_log 'wget -O - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg'
 
 	# Setting our default repo server
 	if [ "$testrepo" ] ; then
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
+		run_and_log 'add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main"'
 	else
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
+		run_and_log 'add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main"'
 	fi
 
 	if [ ! "$noaac" ] ; then
-		add-apt-repository -y -S "deb $DEBIAN_MIRROR stable main non-free non-free-firmware" >> "$log"
+		run_and_log 'add-apt-repository -y -S "deb $DEBIAN_MIRROR stable main non-free non-free-firmware"'
 	fi
 
 	setCurrentStep "Setting up Sangoma repository"
@@ -376,7 +481,7 @@ check_kernel_compatibility() {
     if dpkg --compare-versions "$latest_dahdi_supported_version" "eq" "$latest_wanpipe_supported_version"; then
         local supported_kernel_version=$latest_dahdi_supported_version
     else
-        local supported_kernel_version="6.1.0.22"
+        local supported_kernel_version="${KERNEL_VERSION}"
     fi
 
     if dpkg --compare-versions "$curr_kernel_version" "gt" "$supported_kernel_version"; then
@@ -502,7 +607,7 @@ check_kernel_compatibility() {
 }
 
 refresh_signatures() {
-  fwconsole ma refreshsignatures >> "$log"
+  run_and_log 'fwconsole ma refreshsignatures'
 }
 
 check_services() {
@@ -529,20 +634,21 @@ check_services() {
 
 check_php_version() {
     php_version=$(php -v | grep built: | awk '{print $2}')
-    if [[ "${php_version:0:3}" == "8.2" ]]; then
+    if [[ "${php_version:0:3}" == "$PHPVERSION" ]]; then
         message "Installed PHP version $php_version is compatible with FreePBX."
     else
-        message "Installed PHP version  $php_version is not compatible with FreePBX. Please install PHP version '8.2.x'"
+        message "Installed PHP version $php_version is not compatible with FreePBX. Please install PHP version '$PHPVERSION.x'"
     fi
 
-    # Checking whether enabled PHP modules are of PHP 8.2 version
+    # Check enabled PHP module version
     php_module_version=$(a2query -m | grep php | awk '{print $1}')
+    expected_module="php$PHPVERSION"
 
-    if [[ "$php_module_version" == "php8.2" ]]; then
-       log "The PHP module version $php_module_version is compatible with FreePBX. Proceeding with the script."
+    if [[ "$php_module_version" == "$expected_module" ]]; then
+        log "The PHP module version $php_module_version is compatible with FreePBX. Proceeding with the script."
     else
-       log "The installed PHP module version $php_module_version is not compatible with FreePBX. Please install PHP version '8.2'."
-       exit 1
+        log "The installed PHP module version $php_module_version is not compatible with FreePBX. Please install PHP version '$PHPVERSION'."
+        exit 1
     fi
 }
 
@@ -644,19 +750,23 @@ check_asterisk() {
 
 hold_packages() {
     # List of package names to hold
-    local packages=("sangoma-pbx17" "nodejs" "node-*")
-    if [ ! "$nofpbx" ] ; then
+    local packages=("sangoma-pbx17" "nodejs")
+    if [ ! "$nofpbx" ]; then
         packages+=("freepbx17")
     fi
 
     # Loop through each package and hold it
     for pkg in "${packages[@]}"; do
-        apt-mark hold "$pkg" >> "$log"
+        run_and_log "apt-mark hold $pkg"
+    done
+
+    for pkg in $(dpkg -l | grep '^ii' | awk '{print $2}' | grep '^node-'); do
+        run_and_log "apt-mark hold $pkg"
     done
 }
 
 ################################################################################################################
-MIRROR_PRIO=600
+MIRROR_PRIO=600 # Priority for FreePBX DEB repository pinning
 kernel=$(uname -a)
 host=$(hostname)
 fqdn="$(hostname -f)" || true
@@ -696,19 +806,19 @@ if [ -z "$fqdn" ]; then
 fi
 
 #Ensure the script is not running
-pid="$$"
 pidfile='/var/run/freepbx17_installer.pid'
 
 if [ -f "$pidfile" ]; then
-	log "Previous PID file found."
-	if ps -p "${pid}" > /dev/null
-	then
-		message "FreePBX 17 installation process is already going on (PID=${pid}), hence not starting new process"
-		exit 1;
-	fi
-	log "Removing stale PID file"
-	rm -f "${pidfile}"
+    old_pid=$(cat "$pidfile")
+    if ps -p "$old_pid" > /dev/null; then
+        message "FreePBX 17 installation process is already running (PID=$old_pid), exiting."
+        exit 1
+    else
+        log "Removing stale PID file"
+        rm -f "$pidfile"
+    fi
 fi
+echo "$$" > "$pidfile"
 
 setCurrentStep "Starting installation."
 trap 'errorHandler "$LINENO" "$?" "$BASH_COMMAND"' ERR
@@ -722,8 +832,8 @@ log "  Executing script v$SCRIPTVER ..."
 
 setCurrentStep "Making sure installation is sane"
 # Fixing broken install
-apt-get -y --fix-broken install >> "$log"
-apt-get autoremove -y >> "$log"
+run_and_log 'apt-get -y --fix-broken install'
+run_and_log 'apt-get autoremove -y'
 
 # Check if the CD-ROM repository is present in the sources.list file
 if grep -q "^deb cdrom" /etc/apt/sources.list; then
@@ -732,7 +842,7 @@ if grep -q "^deb cdrom" /etc/apt/sources.list; then
   message "Commented out CD-ROM repository in sources.list"
 fi
 
-apt-get update >> "$log"
+run_and_log 'apt-get update'
 
 # Adding iptables and postfix  inputs so "iptables-persistent" and postfix will not ask for the input
 setCurrentStep "Setting up default configuration"
@@ -765,10 +875,10 @@ if [ "$dahdi" ]; then
 fi
 
 setCurrentStep "Updating repository"
-apt-get update >> "$log"
+run_and_log 'apt-get update'
 
 # log the apt-cache policy
-apt-cache policy  >> "$log"
+run_and_log 'apt-cache policy'
 
 # Don't start the tftp & chrony daemons automatically, as we need to change their configuration
 systemctl mask tftpd-hpa.service
@@ -799,24 +909,23 @@ DEPPRODPKGS=(
 	"bison"
 	"flex"
 	"flite"
-	"php${PHPVERSION}"
-	"php${PHPVERSION}-curl"
-	"php${PHPVERSION}-zip"
-	"php${PHPVERSION}-redis"
-	"php${PHPVERSION}-curl"
-	"php${PHPVERSION}-cli"
-	"php${PHPVERSION}-common"
-	"php${PHPVERSION}-mysql"
-	"php${PHPVERSION}-gd"
-	"php${PHPVERSION}-mbstring"
-	"php${PHPVERSION}-intl"
-	"php${PHPVERSION}-xml"
-	"php${PHPVERSION}-bz2"
-	"php${PHPVERSION}-ldap"
-	"php${PHPVERSION}-sqlite3"
-	"php${PHPVERSION}-bcmath"
-	"php${PHPVERSION}-soap"
-	"php${PHPVERSION}-ssh2"
+    "php${PHPVERSION}"
+    "php${PHPVERSION}-curl"
+    "php${PHPVERSION}-zip"
+    "php${PHPVERSION}-redis"
+    "php${PHPVERSION}-cli"
+    "php${PHPVERSION}-common"
+    "php${PHPVERSION}-mysql"
+    "php${PHPVERSION}-gd"
+    "php${PHPVERSION}-mbstring"
+    "php${PHPVERSION}-intl"
+    "php${PHPVERSION}-xml"
+    "php${PHPVERSION}-bz2"
+    "php${PHPVERSION}-ldap"
+    "php${PHPVERSION}-sqlite3"
+    "php${PHPVERSION}-bcmath"
+    "php${PHPVERSION}-soap"
+    "php${PHPVERSION}-ssh2"
 	"php-pear"
 	"curl"
 	"sox"
@@ -932,9 +1041,8 @@ fi
 if [ "$nochrony" != true ]; then
 	DEPPKGS+=("chrony")
 fi
-for i in "${!DEPPKGS[@]}"; do
-	pkg_install "${DEPPKGS[$i]}"
-done
+
+pkg_install "${DEPPKGS[@]}"
 
 if  dpkg -l | grep -q 'postfix'; then
     warning_message="# WARNING: Changing the inet_interfaces to an IP other than 127.0.0.1 may expose Postfix to external network connections.\n# Only modify this setting if you understand the implications and have specific network requirements."
@@ -986,7 +1094,7 @@ else
 fi
 
 setCurrentStep "Removing unnecessary packages"
-apt-get autoremove -y >> "$log"
+run_and_log apt-get autoremove -y
 
 execution_time="$(($(date +%s) - start))"
 message "Execution time to install all the dependent packages : $execution_time s"
@@ -1120,9 +1228,8 @@ FPBXPKGS=("sysadmin17"
 	   "sangoma-pbx17"
 	   "ffmpeg"
    )
-for i in "${!FPBXPKGS[@]}"; do
-	pkg_install "${FPBXPKGS[$i]}"
-done
+
+pkg_install "${!FPBXPKGS[@]}"
 
 
 #Enabling freepbx.ini file
@@ -1139,7 +1246,7 @@ touch /etc/asterisk/extensions_custom.conf
 chown -R asterisk:asterisk /etc/asterisk
 
 setCurrentStep "Restarting fail2ban"
-systemctl restart fail2ban  >> "$log"
+run_and_log 'systemctl restart fail2ban'
 
 
 if [ "$nofpbx" ] ; then
@@ -1157,67 +1264,66 @@ else
   # Check if only opensource required then remove the commercial modules
   if [ "$opensourceonly" ]; then
     setCurrentStep "Removing commercial modules"
-    fwconsole ma list | awk '/Commercial/ {print $2}' | xargs -I {} fwconsole ma -f remove {} >> "$log"
+    run_and_log "fwconsole ma list | awk '/Commercial/ {print $2}' | xargs -I {} fwconsole ma -f remove {}"
     # Remove firewall module also because it depends on commercial sysadmin module
-    fwconsole ma -f remove firewall >> "$log" || true
+    run_and_log 'fwconsole ma -f remove firewall' || true
   fi
 
   if [ "$dahdi" ]; then
-    fwconsole ma downloadinstall dahdiconfig >> "$log"
+    run_and_log 'fwconsole ma downloadinstall dahdiconfig'
     echo 'export PERL5LIB=$PERL5LIB:/etc/wanpipe/wancfg_zaptel' | sudo tee -a /root/.bashrc
   fi
 
   setCurrentStep "Installing all local modules"
-  fwconsole ma installlocal >> "$log"
+  run_and_log 'fwconsole ma installlocal'
 
   setCurrentStep "Upgrading FreePBX 17 modules"
-  fwconsole ma upgradeall >> "$log"
-
+  run_and_log 'fwconsole ma upgradeall'
   setCurrentStep "Reloading and restarting FreePBX 17"
-  fwconsole reload >> "$log"
-  fwconsole restart >> "$log"
+  run_and_log 'fwconsole reload'
+  run_and_log 'fwconsole restart'
 
   if [ "$opensourceonly" ]; then
     # Uninstall the sysadmin helper package for the sysadmin commercial module
     message "Uninstalling sysadmin17"
-    apt-get purge -y sysadmin17 >> "$log"
+    run_and_log 'apt-get purge -y sysadmin17'
     # Uninstall ionCube loader required for commercial modules and to install the freepbx17 package
     message "Uninstalling ioncube-loader-82"
-    apt-get purge -y ioncube-loader-82 >> "$log"
+    run_and_log 'apt-get purge -y ioncube-loader-82'
   fi
 fi
 
 setCurrentStep "Wrapping up the installation process"
-systemctl daemon-reload >> "$log"
+run_and_log 'systemctl daemon-reload'
 if [ ! "$nofpbx" ] ; then
-  systemctl enable freepbx >> "$log"
+  run_and_log 'systemctl enable freepbx'
 fi
 
 #delete apache2 index.html as we do not need that file
 rm -f /var/www/html/index.html
 
 #enable apache mod ssl
-a2enmod ssl  >> "$log"
+run_and_log 'a2enmod ssl'
 
 #enable apache mod expires
-a2enmod expires  >> "$log"
+run_and_log 'a2enmod expires'
 
 #enable apache
-a2enmod rewrite >> "$log"
+run_and_log 'a2enmod rewrite'
 
 #Enabling freepbx apache configuration
 if [ ! "$nofpbx" ] ; then 
-  a2ensite freepbx.conf >> "$log"
-  a2ensite default-ssl >> "$log"
+  run_and_log 'a2ensite freepbx.conf'
+  run_and_log 'a2ensite default-ssl'
 fi
 
 #Setting postfix size to 100MB
-postconf -e message_size_limit=102400000
+postconf -e message_size_limit=102400000 # 100MB message size limit.
 
 # Disable expose_php for provide less information to attacker
 sed -i 's/\(^expose_php = \).*/\1Off/' /etc/php/${PHPVERSION}/apache2/php.ini
 
-# Setting  max_input_vars to 2000
+# Setting Max input variables for PHP  max_input_vars to 2000
 sed -i 's/;max_input_vars = 1000/max_input_vars = 2000/' /etc/php/${PHPVERSION}/apache2/php.ini
 
 # Disable ServerTokens and ServerSignature for provide less information to attacker
@@ -1225,8 +1331,7 @@ sed -i 's/\(^ServerTokens \).*/\1Prod/' /etc/apache2/conf-available/security.con
 sed -i 's/\(^ServerSignature \).*/\1Off/' /etc/apache2/conf-available/security.conf
 
 # Restart apache2
-systemctl restart apache2 >> "$log"
-
+run_and_log 'systemctl restart apache2'
 setCurrentStep "Holding Packages"
 
 hold_packages
@@ -1245,22 +1350,16 @@ create_post_apt_script
 
 # Refresh signatures
 setCurrentStep "Refreshing modules signatures."
-count=1
 if [ ! "$nofpbx" ]; then
-  while [ $count -eq 1 ]; do
     set +e
     refresh_signatures
     exit_status=$?
     set -e
-    if [ $exit_status -eq 0 ]; then
-      break
-    else
-      log "Command 'fwconsole ma refreshsignatures' failed to execute with exit status $exit_status, running as a background job"
-      refresh_signatures &
-      log "Continuing the remaining script execution"
-      break
+    if [ $exit_status -ne 0 ]; then
+        log "Command 'fwconsole ma refreshsignatures' failed to execute with exit status $exit_status, running as a background job"
+        refresh_signatures &
+        log "Continuing the remaining script execution"
     fi
-  done
 fi
 
 
