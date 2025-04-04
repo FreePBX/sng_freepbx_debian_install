@@ -1224,6 +1224,9 @@ sed -i 's/;max_input_vars = 1000/max_input_vars = 2000/' /etc/php/${PHPVERSION}/
 sed -i 's/\(^ServerTokens \).*/\1Prod/' /etc/apache2/conf-available/security.conf
 sed -i 's/\(^ServerSignature \).*/\1Off/' /etc/apache2/conf-available/security.conf
 
+# Setting pcre.jit to 0
+sed -i 's/;pcre.jit=1/pcre.jit=0/' /etc/php/${PHPVERSION}/apache2/php.ini
+
 # Restart apache2
 systemctl restart apache2 >> "$log"
 
