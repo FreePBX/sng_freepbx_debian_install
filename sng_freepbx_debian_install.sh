@@ -1094,7 +1094,7 @@ else
 fi
 
 setCurrentStep "Removing unnecessary packages"
-run_and_log apt-get autoremove -y
+run_and_log 'apt-get autoremove -y'
 
 execution_time="$(($(date +%s) - start))"
 message "Execution time to install all the dependent packages : $execution_time s"
@@ -1266,7 +1266,7 @@ else
     setCurrentStep "Removing commercial modules"
     run_and_log "fwconsole ma list | awk '/Commercial/ {print $2}' | xargs -I {} fwconsole ma -f remove {}"
     # Remove firewall module also because it depends on commercial sysadmin module
-    run_and_log 'fwconsole ma -f remove firewall' || true
+    run_and_log 'fwconsole ma -f remove firewall || true'
   fi
 
   if [ "$dahdi" ]; then
