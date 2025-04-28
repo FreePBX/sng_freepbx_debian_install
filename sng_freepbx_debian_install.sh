@@ -722,24 +722,23 @@ if [ -z "$fqdn" ]; then
 fi
 
 #Ensure the script is not running
-pid="$$"
 pidfile='/var/run/freepbx17_installer.pid'
 
 if [ -f "$pidfile" ]; then
-	log "Previous PID file found."
-	if ps -p "${pid}" > /dev/null
-	then
-		message "FreePBX 17 installation process is already going on (PID=${pid}), hence not starting new process"
-		exit 1;
+	old_pid=$(cat "$pidfile")
+	if ps -p "$old_pid" > /dev/null; then
+		message "FreePBX 17 installation process is already going on (PID=$old_pid), hence not starting new process"
+		exit 1
+	else
+		log "Removing stale PID file"
+		rm -f "${pidfile}"
 	fi
-	log "Removing stale PID file"
-	rm -f "${pidfile}"
 fi
+echo "$$" > "$pidfile"
 
 setCurrentStep "Starting installation."
 trap 'errorHandler "$LINENO" "$?" "$BASH_COMMAND"' ERR
 trap "terminate" EXIT
-echo "${pid}" > $pidfile
 
 start=$(date +%s)
 message "  Starting FreePBX 17 installation process for $host $kernel"
