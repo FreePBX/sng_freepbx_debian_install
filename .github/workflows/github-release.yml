@@ -1,0 +1,21 @@
+---
+# .github/workflows/github-release.yml
+
+# Continuous Delivery of GitHub Releases when push is tagged with a version number
+
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+jobs:
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Release
+        uses: softprops/action-gh-release@v2
