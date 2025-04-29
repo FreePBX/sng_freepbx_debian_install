@@ -25,6 +25,7 @@ set -e
 SCRIPTVER="1.14"
 ASTVERSION=22
 PHPVERSION="8.2"
+KERNEL_VERSION="6.1.0-32"
 LOG_FOLDER="/var/log/pbx"
 LOG_FILE="${LOG_FOLDER}/freepbx17-install-$(date '+%Y.%m.%d-%H.%M.%S').log"
 log=$LOG_FILE
@@ -52,6 +53,20 @@ while [[ $# -gt 0 ]]; do
 			testrepo=true
 			shift # past argument
 			;;
+		--kernelver)
+		        # Validate Kernel version (e.g., must be a valid kernel version like 6.1.0-32)
+                        if [[ -z "$2" ]]; then
+                                echo "Error: --kernelversion requires a kernel version string"
+                                exit 1
+                        fi
+                        if [[ ! "$2" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]]; then
+                                echo "Error: --kernelversion requires a valid kernel version format (e.g., 6.1.0-32)"
+                                exit 1
+                        fi
+                        KERNEL_VERSION="$2"
+                        shift # past argument
+                        shift # past value
+                        ;;
 		--nofreepbx)
 			nofpbx=true
 			shift # past argument
@@ -402,7 +417,7 @@ check_kernel_compatibility() {
     if dpkg --compare-versions "$latest_dahdi_supported_version" "eq" "$latest_wanpipe_supported_version"; then
         local supported_kernel_version=$latest_dahdi_supported_version
     else
-        local supported_kernel_version="6.1.0.22"
+        local supported_kernel_version="${KERNEL_VERSION}"
     fi
 
     if dpkg --compare-versions "$curr_kernel_version" "gt" "$supported_kernel_version"; then
