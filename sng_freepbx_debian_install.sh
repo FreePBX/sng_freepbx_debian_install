@@ -1122,9 +1122,12 @@ fi
 
 
 # Setting apt configuration to always DO NOT overwrite existing configurations
-cat <<EOF >> /etc/apt/apt.conf.d/00freepbx
+aptNoOverwrite=$(grep "DPkg::options { \"--force-confdef\"; \"--force-confold\"; }" /etc/apt/apt.conf.d/00freepbx |wc -l)
+if [ "0" = "${aptNoOverwrite}" ]; then
+        cat <<EOF >> /etc/apt/apt.conf.d/00freepbx
 DPkg::options { "--force-confdef"; "--force-confold"; }
 EOF
+fi
 
 
 #chown -R asterisk:asterisk /etc/ssl
