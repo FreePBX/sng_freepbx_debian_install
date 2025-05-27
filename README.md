@@ -35,6 +35,23 @@ To contribute code or modules back into the [FreePBX](http://www.freepbx.org/ "F
 
 Please file bug reports at <https://github.com/FreePBX/issue-tracker/issues>
 
+## Available Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `--dev` | Enables development mode installation. Installs additional development packages that are not included in the standard installation. |
+| `--testing` | Uses testing repositories for package installation. Uses `freepbx17-dev` repository instead of `freepbx17-prod`. |
+| `--nofreepbx` | Skips FreePBX installation. Useful when you only need to install dependencies or Asterisk. |
+| `--noasterisk` | Skips Asterisk installation. Useful when you already have Asterisk installed or only need FreePBX and its dependencies. |
+| `--opensourceonly` | Installs only open source modules, removing commercial modules after installation. Will also remove the `sysadmin17` package, the `ioncube-loader-82` package, and the `firewall` module. |
+| `--noaac` | Skips installation of the AAC codec (`libfdk-aac2`). |
+| `--skipversion` | Skips version checking. By default, the script checks for newer versions and may exit if a newer version is available. This option bypasses that check. |
+| `--dahdi` | Installs DAHDI (Digium Asterisk Hardware Device Interface) card support packages for telephony hardware. |
+| `--dahdi-only` | Installs only DAHDI components. Equivalent to using `--nofreepbx`, `--noasterisk`, `--noaac`, and `--dahdi` together. |
+| `--nochrony` | Skips installation of Chrony (time synchronization service). Automatically enabled when running in a container. |
+| `--debianmirror [URL]` | Specifies an alternative Debian mirror URL to use for package downloads. Default is `http://ftp.debian.org/debian`. |
+| `--npmmirror [URL]` | Specifies an alternative NPM registry mirror to use for Node.js package downloads. |
+
 ### How to execute the script
 
 Steps -
@@ -56,5 +73,7 @@ bash /tmp/sng_freepbx_debian_install.sh
 The script will install the necessary dependencies for FreePBX, followed by the FreePBX software itself.
 
 The installation duration may vary depending on your internet bandwidth and system capacity.
+
+## Logging
 
 You can find detailed installation logs at `/var/log/pbx/freepbx17-install.log`.
