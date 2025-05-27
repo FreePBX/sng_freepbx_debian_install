@@ -32,6 +32,50 @@ SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 DEBIAN_MIRROR="http://ftp.debian.org/debian"
 NPM_MIRROR=""
 
+USAGE_TEXT=$(cat <<END_OF_USAGE_TEXT
+Usage: $0 [OPTIONS]
+Options:
+  --help              Show this help message
+  --dev               Enables development mode installation.
+                        Installs additional development packages that are not
+                        included in the standard installation.
+  --testing           Enable testing repositories for package installation.
+                        Uses "freepbx17-dev" repository instead of
+                        "freepbx17-prod".
+  --nofreepbx         Skip FreePBX installation
+                        Useful when you only need to install dependencies or
+                        Asterisk.
+  --noasterisk        Skip Asterisk installation
+                        Useful when you already have Asterisk installed or only
+                        need FreePBX and its dependencies.
+  --opensourceonly    Install only open-source components
+                        Will also remove the "sysadmin17" package, the
+                        "ioncube-loader-82" package, and the "firewall" module.
+  --noaac             Skip AAC support
+                        Skips the installation of AAC codec "libfdk-aac2".
+  --skipversion       Skip version check
+                        By default, the script checks for newer versions and may
+                        exit if a newer version is available. This option
+                        bypasses that check.
+  --dahdi             Installs DAHDI
+                        Installs DAHDI (Digium Asterisk Hardware Device
+                        Interface) card support packages for telephony hardware.
+  --dahdi-only        Install only DAHDI packages
+                        Equivalent to using "--nofreepbx", "--noasterisk",
+                        "--noaac", and "--dahdi" together.
+  --nochrony          Skip Chrony installation
+                        Skips the installation of Chrony, a network time
+                        synchronization service. Automatically enabled when
+                        running in a container.
+  --debianmirror      Set Debian mirror URL
+                        Allows you to specify a custom Debian mirror URL for
+                        package installation.
+  --npmmirror         Set NPM mirror URL
+                        Allows you to specify a custom NPM mirror URL for
+                        package installation.
+END_OF_USAGE_TEXT
+)
+
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
@@ -44,6 +88,10 @@ export PATH=$SANE_PATH
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
+        --help)
+            echo "${USAGE_TEXT}"
+            exit 0
+            ;;
 		--dev)
 			dev=true
 			shift # past argument
