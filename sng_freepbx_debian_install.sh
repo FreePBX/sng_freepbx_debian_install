@@ -828,7 +828,6 @@ DEPPRODPKGS=(
 	"php${PHPVERSION}-curl"
 	"php${PHPVERSION}-zip"
 	"php${PHPVERSION}-redis"
-	"php${PHPVERSION}-curl"
 	"php${PHPVERSION}-cli"
 	"php${PHPVERSION}-common"
 	"php${PHPVERSION}-mysql"
