@@ -276,7 +276,7 @@ setup_repositories() {
 	fi
 
 	if [ ! "$noaac" ] ; then
-		add-apt-repository -y -S "deb $DEBIAN_MIRROR stable main non-free non-free-firmware" >> "$log"
+		add-apt-repository -y -S "deb $DEBIAN_MIRROR bookworm main non-free non-free-firmware" >> "$log"
 	fi
 
 	setCurrentStep "Setting up Sangoma repository"
