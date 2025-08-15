@@ -275,9 +275,45 @@ setup_repositories() {
 		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
 	fi
 
-	if [ ! "$noaac" ] ; then
-		add-apt-repository -y -S "deb $DEBIAN_MIRROR bookworm main non-free non-free-firmware" >> "$log"
-	fi
+    # Check for stable repo calls and update to bookworm if
+    # a) stable repos are being used, switch to bookworm repos
+    # b) no repos added yet, set to bookworm repos
+    # also handles security repos, just in case
+	if [ -z "$noaac" ]; then
+        # Loop over main sources.list and all .list files
+        for file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
+            [ -f "$file" ] || continue
+
+            # Replace any 'stable' line pointing to $DEBIAN_MIRROR with 'bookworm'
+            if grep -qE "deb\s+$DEBIAN_MIRROR\s+stable\b" "$file"; then
+                sed -i.bak -E "s|(deb\s+$DEBIAN_MIRROR\s+)stable\b|\1bookworm|g" "$file"
+                echo "Stable repos found!! Replacing 'stable' with 'bookworm' in $file" >> "$log"
+            fi
+
+            # Replace any 'stable-security' line with 'bookworm-security'
+            if grep -qE "deb\s+http://security\.debian\.org/debian-security\s+stable-security\b" "$file"; then
+                sed -i.bak -E "s|(deb\s+http://security\.debian\.org/debian-security\s+)stable-security\b|\1bookworm-security|g" "$file"
+                echo "Stable repos found!! Replacing 'stable-security' with 'bookworm-security' in $file" >> "$log"
+            fi
+        done
+
+        # Add main Bookworm repo if missing
+        if ! grep -RqsE "deb\s+$DEBIAN_MIRROR\s+bookworm\b" /etc/apt/sources.list /etc/apt/sources.list.d/; then
+            add-apt-repository -y -S "deb $DEBIAN_MIRROR bookworm main non-free non-free-firmware" >> "$log"
+            echo "Added Bookworm main repo via add-apt-repository" >> "$log"
+        else
+            echo "Bookworm main repo already exists, skipping add-apt-repository" >> "$log"
+        fi
+
+        # Add security repo if missing
+        if ! grep -RqsE "deb\s+http://security\.debian\.org/debian-security\s+bookworm-security\b" /etc/apt/sources.list /etc/apt/sources.list.d/; then
+            add-apt-repository -y -S "deb http://security.debian.org/debian-security bookworm-security main contrib non-free" >> "$log"
+            echo "Added Bookworm security repo via add-apt-repository" >> "$log"
+        else
+            echo "Bookworm security repo already exists, skipping add-apt-repository" >> "$log"
+        fi
+    fi
+
 
 	setCurrentStep "Setting up Sangoma repository"
     local aptpref="/etc/apt/preferences.d/99sangoma-fpbx-repository"
