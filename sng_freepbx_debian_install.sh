@@ -75,6 +75,10 @@ while [[ $# -gt 0 ]]; do
 			dev=true
 			shift # past argument
 			;;
+		--disable-deb-update-v13)
+			disableDebUpdateToV13=true
+			shift # past argument
+			;;
 		--testing)
 			testrepo=true
 			shift # past argument
@@ -133,9 +137,52 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+
+block_debian13_trixie_update() {
+	cat >/etc/apt/preferences.d/99-block-trixie.pref <<'EOF'
+# Block Debian 13 Trixie
+Package: *
+Pin: release n=trixie
+Pin-Priority: -1
+
+EOF
+}
+
+fix_debian12_repo() {
+
+	# --- Fix sources.list files to use bookworm ---
+	for file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
+		[ -f "$file" ] || continue
+		# Replace "stable" with "bookworm"
+		if grep -qE "deb\s+$DEBIAN_MIRROR\s+stable\b" "$file"; then
+			sed -i.bak -E "s|(deb\s+$DEBIAN_MIRROR\s+)stable\b|\1bookworm|g" "$file"
+		fi
+
+	    # Replace "stable-security" with "bookworm-security"
+	    if grep -qE "deb\s+http://security\.debian\.org/debian-security\s+stable-security\b" "$file"; then
+		    sed -i.bak -E "s|(deb\s+http://security\.debian\.org/debian-security\s+)stable-security\b|\1bookworm-security|g" "$file"
+	    fi
+    done
+}
+
+
+if [ -n "$disableDebUpdateToV13" ]; then
+	    # Fix current debian repo to point to bookworm
+	    fix_debian12_repo
+	    # Block Debian 13/Trixie update because currently FreePBX only supports Debian 12/Bookworm 
+	    block_debian13_trixie_update
+	    echo "Debian repositories have been updated to use the Bookworm (Debian 12) sources."
+	    echo "The script is exiting now because the '--disable-deb-update-v13' option was used."
+	    echo "This option is intended only for updating the APT sources without proceeding with a full installation."
+	    echo "To run the full installation, please re-run the script **without** the '--disable-deb-update-v13' option."
+	    exit 1
+fi
+
+
 # Create the log file
 mkdir -p "${LOG_FOLDER}"
 touch "${LOG_FILE}"
+
 
 # Redirect stderr to the log file
 exec 2>>"${LOG_FILE}"
@@ -288,34 +335,7 @@ install_asterisk() {
 	pkg_install asterisk-sounds-*
 }
 
-block_debian13_trixie_update() {
-	cat >/etc/apt/preferences.d/99-block-trixie.pref <<'EOF'
-# Block Debian 13 Trixie
-Package: *
-Pin: release n=trixie
-Pin-Priority: -1
 
-EOF
-}
-
-fix_debian12_repo() {
-
-	# --- Fix sources.list files to use bookworm ---
-	for file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
-		[ -f "$file" ] || continue
-		# Replace "stable" with "bookworm"
-		if grep -qE "deb\s+$DEBIAN_MIRROR\s+stable\b" "$file"; then
-			sed -i.bak -E "s|(deb\s+$DEBIAN_MIRROR\s+)stable\b|\1bookworm|g" "$file"
-			message "Updated $file: replaced 'stable' with 'bookworm'"
-		fi
-
-	    # Replace "stable-security" with "bookworm-security"
-	    if grep -qE "deb\s+http://security\.debian\.org/debian-security\s+stable-security\b" "$file"; then
-		    sed -i.bak -E "s|(deb\s+http://security\.debian\.org/debian-security\s+)stable-security\b|\1bookworm-security|g" "$file"
-		    message "Updated $file: replaced 'stable-security' with 'bookworm-security'"
-	    fi
-    done
-}
 
 setup_repositories() {
 	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log"
