@@ -257,6 +257,9 @@ setCurrentStep () {
 terminate() {
 	# removing pid file
 	message "Exiting script"
+    # display last 10 lines of the log file 
+	message "displaying last 10 lines from the log file"
+    tail -n 10 "$LOG_FILE"
 	rm -f "$pidfile"
 }
 
