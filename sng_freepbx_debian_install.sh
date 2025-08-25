@@ -866,8 +866,6 @@ EOF
 echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
-# Install below packages which are required for repositories setup
-pkg_install software-properties-common
 pkg_install gnupg
 
 setCurrentStep "Setting up repositories"
