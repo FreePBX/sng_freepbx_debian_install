@@ -22,7 +22,7 @@
 #                                               FreePBX 17                          #
 #####################################################################################
 set -e
-SCRIPTVER="1.14"
+SCRIPTVER="1.15"
 ASTVERSION=22
 PHPVERSION="8.2"
 LOG_FOLDER="/var/log/pbx"
@@ -31,6 +31,33 @@ log=$LOG_FILE
 SANE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 DEBIAN_MIRROR="http://ftp.debian.org/debian"
 NPM_MIRROR=""
+DEBIAN_OS_VERSION=""
+
+if [ -f /etc/os-release ]; then
+    DEBIAN_OS_VERSION=$(grep -oP '(?<=VERSION_CODENAME=).*' /etc/os-release)
+fi
+
+# Fallback to checking /etc/debian_version numerically
+if [ -z "$DEBIAN_OS_VERSION" ] && [ -f /etc/debian_version ]; then
+    case "$(cat /etc/debian_version)" in
+        12*|bookworm)
+            DEBIAN_OS_VERSION="bookworm"
+            ;;
+        13*|trixie)
+            DEBIAN_OS_VERSION="trixie"
+            ;;
+        *)
+            DEBIAN_OS_VERSION="unknown"
+            ;;
+    esac
+fi
+
+# Only allow Debian 12 (bookworm)
+if [ "$DEBIAN_OS_VERSION" != "bookworm" ]; then
+    echo "Unsupported OS version. This script supports only Debian 12 (bookworm). Detected: $DEBIAN_OS_VERSION"
+    exit 1
+fi
+
 
 # Check for root privileges
 if [[ $EUID -ne 0 ]]; then
@@ -46,6 +73,10 @@ while [[ $# -gt 0 ]]; do
 	case $1 in
 		--dev)
 			dev=true
+			shift # past argument
+			;;
+		--disable-deb-update-v13)
+			disableDebUpdateToV13=true
 			shift # past argument
 			;;
 		--testing)
@@ -106,9 +137,52 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+
+block_debian13_trixie_update() {
+	cat >/etc/apt/preferences.d/99-block-trixie.pref <<'EOF'
+# Block Debian 13 Trixie
+Package: *
+Pin: release n=trixie
+Pin-Priority: -1
+
+EOF
+}
+
+fix_debian12_repo() {
+
+	# --- Fix sources.list files to use bookworm ---
+	for file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
+		[ -f "$file" ] || continue
+		# Replace "stable" with "bookworm"
+		if grep -qE "deb\s+$DEBIAN_MIRROR\s+stable\b" "$file"; then
+			sed -i.bak -E "s|(deb\s+$DEBIAN_MIRROR\s+)stable\b|\1bookworm|g" "$file"
+		fi
+
+	    # Replace "stable-security" with "bookworm-security"
+	    if grep -qE "deb\s+http://security\.debian\.org/debian-security\s+stable-security\b" "$file"; then
+		    sed -i.bak -E "s|(deb\s+http://security\.debian\.org/debian-security\s+)stable-security\b|\1bookworm-security|g" "$file"
+	    fi
+    done
+}
+
+
+if [ -n "$disableDebUpdateToV13" ]; then
+	    # Fix current debian repo to point to bookworm
+	    fix_debian12_repo
+	    # Block Debian 13/Trixie update because currently FreePBX only supports Debian 12/Bookworm 
+	    block_debian13_trixie_update
+	    echo "Debian repositories have been updated to use the Bookworm (Debian 12) sources."
+	    echo "The script is exiting now because the '--disable-deb-update-v13' option was used."
+	    echo "This option is intended only for updating the APT sources without proceeding with a full installation."
+	    echo "To run the full installation, please re-run the script **without** the '--disable-deb-update-v13' option."
+	    exit 1
+fi
+
+
 # Create the log file
 mkdir -p "${LOG_FOLDER}"
 touch "${LOG_FILE}"
+
 
 # Redirect stderr to the log file
 exec 2>>"${LOG_FILE}"
@@ -261,22 +335,46 @@ install_asterisk() {
 	pkg_install asterisk-sounds-*
 }
 
+
+
 setup_repositories() {
 	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log"
 
 	wget -O - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
 
-	# Setting our default repo server
-	if [ "$testrepo" ] ; then
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-dev bookworm main" >> "$log"
+	if [ "$testrepo" ]; then
+		REPO_URL="http://deb.freepbx.org/freepbx17-dev"
 	else
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
-		add-apt-repository -y -S "deb [ arch=amd64 ] http://deb.freepbx.org/freepbx17-prod bookworm main" >> "$log"
+		REPO_URL="http://deb.freepbx.org/freepbx17-prod"
 	fi
 
-	if [ ! "$noaac" ] ; then
-		add-apt-repository -y -S "deb $DEBIAN_MIRROR bookworm main non-free non-free-firmware" >> "$log"
+	REPO_LINE="deb [arch=amd64] $REPO_URL bookworm main"
+	REPO_FILE="/etc/apt/sources.list"
+
+	# Only add the line if it's not already present
+	if ! grep -qsF "$REPO_LINE" "$REPO_FILE" 2>/dev/null; then
+		echo "$REPO_LINE" | tee -a "$REPO_FILE" >> "$log"
+		echo "Added FreePBX repo: $REPO_LINE" >> "$log"
+	else
+		echo "FreePBX repo already exists: $REPO_LINE" >> "$log"
+	fi
+
+	if [ -z "$noaac" ]; then
+	     # Add main Bookworm repo if missing
+	     REPO_LINE="deb $DEBIAN_MIRROR bookworm main non-free non-free-firmware"
+
+	     # Only add if the line doesn't already exist
+	     if ! grep -qsF "$REPO_LINE" "$REPO_FILE"; then
+		     echo "$REPO_LINE" | tee -a "$REPO_FILE" >> "$log"
+		     echo "Added Bookworm main repo: $REPO_LINE" >> "$log"
+	     else
+		     echo "Bookworm main repo already exists: $REPO_LINE" >> "$log"
+	     fi			
+
+	    # Fix current debian repo to point to bookworm
+	    fix_debian12_repo
+	    # Block Debian 13/Trixie update because currently FreePBX only supports Debian 12/Bookworm 
+	    block_debian13_trixie_update
 	fi
 
 	setCurrentStep "Setting up Sangoma repository"
@@ -768,8 +866,6 @@ EOF
 echo "postfix postfix/mailname string ${fqdn}" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
-# Install below packages which are required for repositories setup
-pkg_install software-properties-common
 pkg_install gnupg
 
 setCurrentStep "Setting up repositories"
