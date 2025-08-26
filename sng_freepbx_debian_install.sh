@@ -237,14 +237,17 @@ check_version() {
         esac
 }
 
-# Function to log messages
+# Functions to log messages
+echo_ts() {
+	echo "$(date +"%Y-%m-%d %T") - $*"
+}
+
 log() {
-	echo "$(date +"%Y-%m-%d %T") - $*" >> "$LOG_FILE"
+	echo_ts "$*" >> "$LOG_FILE"
 }
 
 message() {
-	echo "$(date +"%Y-%m-%d %T") - $*"
-	log "$*"
+	echo_ts "$*" | tee -a "$LOG_FILE"
 }
 
 #Function to record and display the current step
@@ -255,19 +258,21 @@ setCurrentStep () {
 
 # Function to cleanup installation
 terminate() {
+	# display last 10 lines of the log file on abnormal exits
+	if [ $? -ne 0 ]; then
+		echo_ts "Displaying last 10 lines from the log file"
+		tail -n 10 "$LOG_FILE"
+	fi
 	# removing pid file
-	message "Exiting script"
-    # display last 10 lines of the log file 
-	message "displaying last 10 lines from the log file"
-    tail -n 10 "$LOG_FILE"
 	rm -f "$pidfile"
+	message "Exiting script"
 }
 
 #Function to log error and location
 errorHandler() {
 	log "****** INSTALLATION FAILED *****"
-	message "Installation failed at step ${currentStep}. Please check log ${LOG_FILE} for details."
-	message "Error at line: $1 exiting with code $2 (last command was: $3)"
+	echo_ts "Installation failed at step ${currentStep}. Please check log ${LOG_FILE} for details."
+	log "Error at line: $1 exiting with code $2 (last command was: $3)"
 	exit "$2"
 }
 
