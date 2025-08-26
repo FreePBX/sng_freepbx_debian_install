@@ -380,6 +380,8 @@ setup_repositories() {
 	    block_debian13_trixie_update
 	fi
 
+	apt-get update >> "$log"
+
 	setCurrentStep "Setting up Sangoma repository"
     local aptpref="/etc/apt/preferences.d/99sangoma-fpbx-repository"
     cat <<EOF> $aptpref
