@@ -1,0 +1,6 @@
+# action.yml
+name: 'Build FreePBX'
+description: 'Docker pipeline for building FreePBX via Ansible bootstrap'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
