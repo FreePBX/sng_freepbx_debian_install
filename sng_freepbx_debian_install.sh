@@ -122,10 +122,10 @@ while [[ $# -gt 0 ]]; do
 			DEBIAN_MIRROR=$2
 			shift; shift # past argument
 			;;
-    --npmmirror)
-      NPM_MIRROR=$2
-      shift; shift # past argument
-      ;;
+		--npmmirror)
+			NPM_MIRROR=$2
+			shift; shift # past argument
+			;;
 		-*)
 			echo "Unknown option $1"
 			exit 1
