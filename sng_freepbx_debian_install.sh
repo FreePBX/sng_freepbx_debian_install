@@ -54,8 +54,8 @@ fi
 
 # Only allow Debian 12 (bookworm)
 if [ "$DEBIAN_OS_VERSION" != "bookworm" ]; then
-    echo "Unsupported OS version. This script supports only Debian 12 (bookworm). Detected: $DEBIAN_OS_VERSION"
-    exit 1
+	echo "Unsupported OS version. This script supports only Debian 12 (bookworm). Detected: $DEBIAN_OS_VERSION. If you want to install freepbx17 on debian 13 (trixie) you will need php8.2 but in official trixie repos php8.4 is available which is in-compatiable with freepbx17. There is a work around. You can use this repo https://packages.sury.org/php/README.txt and php8.2 should install just fine."
+    #exit 1
 fi
 
 
@@ -138,45 +138,55 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-block_debian13_trixie_update() {
-	cat >/etc/apt/preferences.d/99-block-trixie.pref <<'EOF'
-# Block Debian 13 Trixie
+#block_debian13_trixie_update() {
+#	cat >/etc/apt/preferences.d/99-block-trixie.pref <<'EOF'
+## Block Debian 13 Trixie
+#Package: *
+#Pin: release n=trixie
+#Pin-Priority: -1
+#
+#EOF
+#}
+
+give_low_priority_to_bookworm() {
+	cat >/etc/apt/preferences.d/99-bookworm.pref <<'EOF'
+# Give low priority to bookworm packages
 Package: *
-Pin: release n=trixie
-Pin-Priority: -1
+Pin: release n=bookworm
+Pin-Priority: 10
 
 EOF
 }
 
-fix_debian12_repo() {
+#fix_debian12_repo() {
+#
+#	# --- Fix sources.list files to use bookworm ---
+#	for file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
+#		[ -f "$file" ] || continue
+#		# Replace "stable" with "bookworm"
+#		if grep -qE "deb\s+$DEBIAN_MIRROR\s+stable\b" "$file"; then
+#			sed -i.bak -E "s|(deb\s+$DEBIAN_MIRROR\s+)stable\b|\1bookworm|g" "$file"
+#		fi
+#
+#	    # Replace "stable-security" with "bookworm-security"
+#	    if grep -qE "deb\s+http://security\.debian\.org/debian-security\s+stable-security\b" "$file"; then
+#		    sed -i.bak -E "s|(deb\s+http://security\.debian\.org/debian-security\s+)stable-security\b|\1bookworm-security|g" "$file"
+#	    fi
+#    done
+#}
 
-	# --- Fix sources.list files to use bookworm ---
-	for file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
-		[ -f "$file" ] || continue
-		# Replace "stable" with "bookworm"
-		if grep -qE "deb\s+$DEBIAN_MIRROR\s+stable\b" "$file"; then
-			sed -i.bak -E "s|(deb\s+$DEBIAN_MIRROR\s+)stable\b|\1bookworm|g" "$file"
-		fi
 
-	    # Replace "stable-security" with "bookworm-security"
-	    if grep -qE "deb\s+http://security\.debian\.org/debian-security\s+stable-security\b" "$file"; then
-		    sed -i.bak -E "s|(deb\s+http://security\.debian\.org/debian-security\s+)stable-security\b|\1bookworm-security|g" "$file"
-	    fi
-    done
-}
-
-
-if [ -n "$disableDebUpdateToV13" ]; then
-	    # Fix current debian repo to point to bookworm
-	    fix_debian12_repo
-	    # Block Debian 13/Trixie update because currently FreePBX only supports Debian 12/Bookworm 
-	    block_debian13_trixie_update
-	    echo "Debian repositories have been updated to use the Bookworm (Debian 12) sources."
-	    echo "The script is exiting now because the '--disable-deb-update-v13' option was used."
-	    echo "This option is intended only for updating the APT sources without proceeding with a full installation."
-	    echo "To run the full installation, please re-run the script **without** the '--disable-deb-update-v13' option."
-	    exit 1
-fi
+#if [ -n "$disableDebUpdateToV13" ]; then
+#	    # Fix current debian repo to point to bookworm
+#	    fix_debian12_repo
+#	    # Block Debian 13/Trixie update because currently FreePBX only supports Debian 12/Bookworm 
+#	    block_debian13_trixie_update
+#	    echo "Debian repositories have been updated to use the Bookworm (Debian 12) sources."
+#	    echo "The script is exiting now because the '--disable-deb-update-v13' option was used."
+#	    echo "This option is intended only for updating the APT sources without proceeding with a full installation."
+#	    echo "To run the full installation, please re-run the script **without** the '--disable-deb-update-v13' option."
+#	    exit 1
+#fi
 
 
 # Create the log file
@@ -346,7 +356,7 @@ install_asterisk() {
 
 
 setup_repositories() {
-	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log"
+	#apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log"
 
 	wget -O - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
 
@@ -380,10 +390,13 @@ setup_repositories() {
 	     fi			
 
 	    # Fix current debian repo to point to bookworm
-	    fix_debian12_repo
+	    #fix_debian12_repo
 	    # Block Debian 13/Trixie update because currently FreePBX only supports Debian 12/Bookworm 
-	    block_debian13_trixie_update
+	    #block_debian13_trixie_update
 	fi
+
+
+	give_low_priority_to_bookworm
 
 	apt-get update >> "$log"
 
@@ -988,7 +1001,7 @@ DEPPRODPKGS=(
 	# Asterisk package
 	"liburiparser1"
 	# ffmpeg package
-	"libavdevice59"
+	"libavdevice61"
 	# System Admin module
 	"python3-mysqldb"
 	"python-is-python3"
@@ -997,7 +1010,7 @@ DEPPRODPKGS=(
 	"libicu-dev"
 	"libsrtp2-1"
 	"libspandsp2"
-	"libncurses5"
+	"libncurses6"
 	"autoconf"
 	"libical3"
 	"libneon27"
