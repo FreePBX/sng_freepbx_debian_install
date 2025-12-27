@@ -1304,11 +1304,11 @@ else
   fwconsole ma installlocal >> "$log"
 
   setCurrentStep "Upgrading FreePBX 17 modules"
+  fwconsole stop >> "$log"
   fwconsole ma upgradeall >> "$log"
 
-  setCurrentStep "Reloading and restarting FreePBX 17"
-  fwconsole reload >> "$log"
-  fwconsole restart >> "$log"
+  setCurrentStep "Restarting FreePBX 17"
+  fwconsole start >> "$log"
 
   if [ "$opensourceonly" ]; then
     # Uninstall the sysadmin helper package for the sysadmin commercial module
@@ -1383,6 +1383,8 @@ create_post_apt_script
 setCurrentStep "Refreshing modules signatures."
 count=1
 if [ ! "$nofpbx" ]; then
+  fwconsole stop >> "$log"
+  
   while [ $count -eq 1 ]; do
     set +e
     refresh_signatures
@@ -1397,6 +1399,8 @@ if [ ! "$nofpbx" ]; then
       break
     fi
   done
+  
+  fwconsole start >> "$log"
 fi
 
 
