@@ -348,7 +348,9 @@ install_asterisk() {
 setup_repositories() {
 	apt-key del "9641 7C6E 0423 6E0A 986B  69EF DE82 7447 3C8D 0E52" >> "$log"
 
-	wget -O - http://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
+	APTLY_EXPECTED_SHA=""
+
+	wget -O - https://deb.freepbx.org/gpg/aptly-pubkey.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg  >> "$log"
 
 	if [ "$testrepo" ]; then
 		REPO_URL="http://deb.freepbx.org/freepbx17-dev"
